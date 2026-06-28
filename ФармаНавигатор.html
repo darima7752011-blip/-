@@ -1,0 +1,3340 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ФармаНавигатор — справочник по фарм-отрасли России</title>
+<meta name="description" content="Справочник-навигатор по 100 крупнейшим фармацевтическим компаниям с производством и присутствием в России: масштаб, заводы, продуктовый портфель, вакансии — для рекрутеров." />
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- React -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<!-- Babel -->
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<!-- Recharts -->
+<script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+
+<!-- Данные 100 компаний — редактируются в companies-data.js -->
+<script>
+/* ============================================================================
+   ДАННЫЕ КОМПАНИЙ — РЕДАКТИРУЙТЕ ТОЛЬКО ЭТОТ ФАЙЛ
+   ============================================================================
+   100 крупнейших фармацевтических компаний с производством или присутствием
+   в России. Чтобы добавить компанию — скопируйте любой блок { ... } ниже,
+   вставьте в конец списка перед закрывающей ] и замените значения.
+   Ничего в коде сайта (index.html) менять не нужно: фильтры, карта,
+   аналитика, сравнение и экспорт обновятся автоматически.
+
+   ПОЯСНЕНИЯ К ПОЛЯМ:
+   - name            : краткое название (показывается на карточке)
+   - marketRank      : позиция в рейтинге Forbes 2025 (необязательно)
+   - fullName        : полное юридическое / официальное название
+   - country         : "РФ" | "Зарубеж" | "СП" (совместное предприятие)
+   - status          : короткий статус-ярлык (виден в шапке карточки)
+   - hasProductionInRussia : true / false — есть ли завод/локализация в РФ
+   - regions         : [ "Регион", ... ] — субъекты РФ присутствия
+   - factories       : заводы. lat/lng — координаты (уровень города) для карты.
+                       gmp: "Да" | "Нет" | "н/д"
+   - employeesRussia : число сотрудников в РФ (или "н/д")
+   - employeesGlobal : глобально (или "н/д")
+   - revenue         : выручка в РФ, млрд ₽ (число; null если не раскрыта)
+   - revenueYear     : за какой год выручка
+   - yearEnteredRussia : год прихода / основания в РФ
+   - segments        : ["Дженерики","Оригинальные","Биотех","Вакцины","OTC","Рецептурные"]
+   - therapeuticAreas: ["Онкология","Кардиология", ...]
+   - keyProducts     : ["Препарат", ...]
+   - hasRnD          : true / false — есть ли R&D в РФ
+   - hr              : { roles:[...], careerSite:"url", note:"строка" }
+   - website         : сайт компании
+   - logoColor       : цвет плашки логотипа (любой hex), буквы возьмутся из name
+   - note            : произвольная заметка (новости/события), можно ""
+
+   Где данные публично не раскрыты — стоит "н/д" или null. Это честно;
+   выдуманные цифры не приводятся. Координаты заводов приблизительны.
+   ============================================================================ */
+
+window.PHARMA_COMPANIES = [
+  /* ===================== РОССИЙСКИЕ КОМПАНИИ ===================== */
+  {
+    name: "Озон Фармацевтика",
+    marketRank: 1,
+    fullName: "АО «Озон Фармацевтика»",
+    country: "РФ",
+    status: "Российская · публичная (MOEX)",
+    hasProductionInRussia: true,
+    regions: ["Самарская область"],
+    factories: [
+      { city: "Жигулёвск", lat: 53.4106, lng: 49.4969, products: "Дженерики, твёрдые лекарственные формы", gmp: "Да" },
+      { city: "Тольятти (ОЭЗ)", lat: 53.5078, lng: 49.4204, products: "Современные ЛП, расширение мощностей", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 63.6,
+    revenueYear: 2025,
+    yearEnteredRussia: 2001,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Кардиология", "Неврология", "Онкология (в разработке)", "Широкий профиль"],
+    keyProducts: ["556 регистрационных удостоверений", "Портфель дженериков"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "QC/QA", "Регистрация", "R&D"], careerSite: "https://ozonpharm.ru/", note: "Пайплайн 244 молекулы; планы по биопрепаратам" },
+    website: "https://ozonpharm.ru/",
+    logoColor: "#2563eb",
+    note: "№1 в рейтинге Forbes по итогам 2025 года. IPO в 2024 году."
+  },
+  {
+    name: "Биннофарм Групп",
+    marketRank: 2,
+    fullName: "ООО «Биннофарм Групп» (АФК «Система»)",
+    country: "РФ",
+    status: "Российская · группа АФК «Система»",
+    hasProductionInRussia: true,
+    regions: ["Москва", "Московская область", "Ставропольский край", "Курганская область", "Республика Татарстан"],
+    factories: [
+      { city: "Зеленоград (Москва)", lat: 55.9825, lng: 37.1814, products: "Биотех, готовые лекарственные формы", gmp: "Да" },
+      { city: "Ставрополь", lat: 45.0445, lng: 41.9690, products: "Твёрдые и жидкие формы", gmp: "Да" },
+      { city: "Курган", lat: 55.4500, lng: 65.3333, products: "Инфузионные растворы, ампулы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 54.0,
+    revenueYear: 2025,
+    yearEnteredRussia: 2001,
+    segments: ["Дженерики", "Биотех", "Рецептурные", "OTC"],
+    therapeuticAreas: ["Антибиотики", "Неврология", "Кардиология", "Иммунология"],
+    keyProducts: ["Портфель >450 препаратов", "Вакцины (исторически)"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "Медпредставители", "QA/QC", "Регистрация"], careerSite: "https://binnopharm-group.ru/", note: "49 регистрационных удостоверений за 2025 г. в 11 странах" },
+    website: "https://binnopharm-group.ru/",
+    logoColor: "#0891b2",
+    note: "№2 в рейтинге Forbes 2025. Включает «Алиум», «Биоком», «Синтез»."
+  },
+  {
+    name: "Отисифарм",
+    marketRank: 3,
+    fullName: "ПАО «Отисифарм»",
+    country: "РФ",
+    status: "Российская · публичная",
+    hasProductionInRussia: true,
+    regions: ["Калининградская область"],
+    factories: [
+      { city: "Храброво (Калининград)", lat: 54.8900, lng: 20.5926, products: "OTC-препараты, готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 54.8,
+    revenueYear: 2025,
+    yearEnteredRussia: 2013,
+    segments: ["OTC"],
+    therapeuticAreas: ["Простуда и грипп", "Гастроэнтерология", "Витамины"],
+    keyProducts: ["Арбидол", "Амиксин", "Компливит", "Пенталгин"],
+    hasRnD: false,
+    hr: { roles: ["Маркетинг", "Производство", "Продажи"], careerSite: "https://otcpharm.ru/", note: "Открыли собственное производство в Калининграде в 2023 г." },
+    website: "https://otcpharm.ru/",
+    logoColor: "#7c3aed",
+    note: "Крупнейший российский производитель безрецептурных препаратов."
+  },
+  {
+    name: "Фармстандарт",
+    marketRank: 4,
+    fullName: "ПАО «Фармстандарт»",
+    country: "РФ",
+    status: "Российская · группа",
+    hasProductionInRussia: true,
+    regions: ["Курская область", "Уфа (Башкортостан)", "Тюменская область", "Московская область"],
+    factories: [
+      { city: "Курск", lat: 51.7373, lng: 36.1874, products: "Готовые лекарственные формы", gmp: "Да" },
+      { city: "Уфа", lat: 54.7388, lng: 55.9721, products: "Препараты, фактор свёртывания крови VIII", gmp: "Да" },
+      { city: "Тюмень", lat: 57.1530, lng: 65.5343, products: "Таблетки, капсулы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 52.2,
+    revenueYear: 2025,
+    yearEnteredRussia: 1996,
+    segments: ["Дженерики", "Биотех", "OTC", "Рецептурные"],
+    therapeuticAreas: ["Эндокринология", "Гематология", "Неврология", "Широкий профиль"],
+    keyProducts: ["Арбидол", "Компливит", ">400 препаратов, >140 в ЖНВЛП"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "QA/QC", "R&D", "Логистика"], careerSite: "https://pharmstd.ru/", note: "Запуск производства фактора VIII (2024). Завод плазмы в «Алабушево» в планах." },
+    website: "https://pharmstd.ru/",
+    logoColor: "#dc2626",
+    note: "Один из исторических лидеров; мощности >1,7 млрд упаковок в год."
+  },
+  {
+    name: "Биокад",
+    marketRank: 5,
+    fullName: "АО «БИОКАД»",
+    country: "РФ",
+    status: "Российская · биотех полного цикла",
+    hasProductionInRussia: true,
+    regions: ["Санкт-Петербург", "Москва (Зеленоград)", "Московская область"],
+    factories: [
+      { city: "Стрельна (СПб)", lat: 59.8500, lng: 30.0333, products: "Моноклональные антитела, биопрепараты", gmp: "Да" },
+      { city: "Зеленоград (Москва)", lat: 55.9825, lng: 37.1814, products: "Биотехнологическое производство", gmp: "Да" }
+    ],
+    employeesRussia: 2700,
+    employeesGlobal: 2700,
+    revenue: 52.2,
+    revenueYear: 2025,
+    yearEnteredRussia: 2001,
+    segments: ["Биотех", "Оригинальные", "Вакцины"],
+    therapeuticAreas: ["Онкология", "Аутоиммунные", "Инфекционные"],
+    keyProducts: ["~55–62 препарата", "Оригинальные моноклональные антитела"],
+    hasRnD: true,
+    hr: { roles: ["Учёные/R&D (~40%)", "Биопроизводство", "Клинические исследования"], careerSite: "https://biocad.ru/career", note: "~40% штата — учёные и исследователи. Полный цикл: от молекулы до производства." },
+    website: "https://biocad.ru/",
+    logoColor: "#059669",
+    note: "Один из ведущих биотех-игроков РФ. Офисы в ОАЭ, Бразилии, Вьетнаме, Китае."
+  },
+  {
+    name: "Фармасинтез",
+    marketRank: 6,
+    fullName: "АО «Фармасинтез»",
+    country: "РФ",
+    status: "Российская · группа",
+    hasProductionInRussia: true,
+    regions: ["Иркутская область", "Санкт-Петербург", "Тюменская область", "Приморский край"],
+    factories: [
+      { city: "Иркутск", lat: 52.2870, lng: 104.3050, products: "Противотуберкулёзные, ВИЧ, онкология", gmp: "Да" },
+      { city: "Санкт-Петербург", lat: 59.9343, lng: 30.3351, products: "Готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 36.2,
+    revenueYear: 2025,
+    yearEnteredRussia: 1997,
+    segments: ["Дженерики", "Рецептурные", "Оригинальные"],
+    therapeuticAreas: ["Фтизиатрия (ТБ)", "ВИЧ", "Онкология", "Эндокринология"],
+    keyProducts: ["Противотуберкулёзные препараты", "Антиретровирусные"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "QA/QC"], careerSite: "https://pharmasyntez.com/", note: "Сильные позиции в социально значимых препаратах (ТБ, ВИЧ)." },
+    website: "https://pharmasyntez.com/",
+    logoColor: "#0369a1",
+    note: ""
+  },
+  {
+    name: "Обновление (ПФК)",
+    marketRank: 7,
+    fullName: "АО «Производственная фармацевтическая компания Обновление» (Renewal)",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Новосибирская область"],
+    factories: [
+      { city: "Новосибирск", lat: 55.0084, lng: 82.9357, products: "Дженерики, готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 25.6,
+    revenueYear: 2025,
+    yearEnteredRussia: 1997,
+    segments: ["Дженерики", "OTC"],
+    therapeuticAreas: ["Широкий профиль"],
+    keyProducts: ["Renewal — массовые дженерики"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "https://renewal.ru/", note: "" },
+    website: "https://renewal.ru/",
+    logoColor: "#65a30d",
+    note: ""
+  },
+  {
+    name: "Р-Фарм",
+    marketRank: 8,
+    fullName: "АО «Р-Фарм»",
+    country: "РФ",
+    status: "Российская · системообразующая",
+    hasProductionInRussia: true,
+    regions: ["Ярославская область", "Москва", "Костромская область"],
+    factories: [
+      { city: "Ярославль", lat: 57.6261, lng: 39.8845, products: "Готовые формы, терапевтические белки, АФИ", gmp: "Да" },
+      { city: "Москва (Технополис)", lat: 55.7000, lng: 37.6800, products: "Вакцины («Спутник Технополис»)", gmp: "Да" },
+      { city: "Кострома (Ортат)", lat: 57.7679, lng: 40.9269, products: "Твёрдые и стерильные формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 21.0,
+    revenueYear: 2025,
+    yearEnteredRussia: 2001,
+    segments: ["Рецептурные", "Биотех", "Вакцины", "Оригинальные"],
+    therapeuticAreas: ["Онкология", "Инфекционные", "Ревматология", "Госпитальный сегмент"],
+    keyProducts: ["Арланса (нарлапревир)", "Артлегиа", "Коронавир"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "Клинические исследования", "Медицина"], careerSite: "https://career.rpharm.com/vacancies", note: "Филиалы в Германии, США, Японии. Системообразующее предприятие." },
+    website: "https://rpharm.ru/",
+    logoColor: "#1d4ed8",
+    note: "Основана Алексеем Репиком в 2001 г. Заводы Pfizer (Германия) и Teva (Ярославль) в составе группы."
+  },
+  {
+    name: "Велфарм Групп",
+    marketRank: 9,
+    fullName: "ООО «Велфарм Групп»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Курганская область", "Москва"],
+    factories: [
+      { city: "Курган", lat: 55.4500, lng: 65.3333, products: "Готовые лекарственные формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 20.1,
+    revenueYear: 2025,
+    yearEnteredRussia: 2015,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Широкий профиль"],
+    keyProducts: ["Портфель дженериков"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://welfarm.ru/",
+    logoColor: "#16a34a",
+    note: ""
+  },
+  {
+    name: "ПромоМед",
+    marketRank: 10,
+    fullName: "ПАО «ПРОМОМЕД» (завод «Биохимик», Саранск)",
+    country: "РФ",
+    status: "Российская · публичная (MOEX)",
+    hasProductionInRussia: true,
+    regions: ["Республика Мордовия"],
+    factories: [
+      { city: "Саранск (Биохимик)", lat: 54.1838, lng: 45.1749, products: "АФИ, антибиотики, биотех, готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 21.4,
+    revenueYear: 2024,
+    yearEnteredRussia: 2005,
+    segments: ["Оригинальные", "Биотех", "Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Эндокринология (ожирение/диабет)", "Онкология", "Инфекционные"],
+    keyProducts: ["Велгия (семаглутид)", "Тирзетта (тирзепатид)", "Арепливир"],
+    hasRnD: true,
+    hr: { roles: ["R&D", "Биопроизводство", "Клинические исследования", "QA/QC"], careerSite: "https://promomed.ru/", note: "Лидер РФ по аналогам инкретиновых препаратов (ожирение, диабет). IPO в 2024 г." },
+    website: "https://promomed.ru/",
+    logoColor: "#9333ea",
+    note: "Полный цикл по семаглутиду и тирзепатиду. Сильный пайплайн в метаболике и онкологии."
+  },
+  {
+    name: "Герофарм",
+    fullName: "ООО «Герофарм»",
+    country: "РФ",
+    status: "Российская · полный цикл (инсулины)",
+    hasProductionInRussia: true,
+    regions: ["Санкт-Петербург", "Московская область"],
+    factories: [
+      { city: "Оболенск (МО)", lat: 54.9333, lng: 37.3667, products: "Инсулины полного цикла", gmp: "Да" },
+      { city: "Пушкин (СПб)", lat: 59.7142, lng: 30.4163, products: "Готовые формы, субстанции", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 35.2,
+    revenueYear: 2025,
+    yearEnteredRussia: 2001,
+    segments: ["Биотех", "Оригинальные"],
+    therapeuticAreas: ["Эндокринология (диабет)", "Неврология"],
+    keyProducts: ["Современные инсулины (от субстанции до готовой формы)", "Семаглутид (разработка)"],
+    hasRnD: true,
+    hr: { roles: ["Биопроизводство", "R&D", "QA/QC"], careerSite: "https://geropharm.ru/", note: "Крупнейший российский производитель современных инсулинов." },
+    website: "https://geropharm.ru/",
+    logoColor: "#0d9488",
+    note: "Производство инсулинов полного цикла."
+  },
+  {
+    name: "Валента Фарм",
+    fullName: "АО «Валента Фарм»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Московская область"],
+    factories: [
+      { city: "Щёлково (МО)", lat: 55.9203, lng: 38.0094, products: "Готовые лекарственные формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 31.5,
+    revenueYear: 2025,
+    yearEnteredRussia: 1997,
+    segments: ["Рецептурные", "OTC", "Оригинальные"],
+    therapeuticAreas: ["Неврология", "Психиатрия", "Иммунология", "Гастроэнтерология"],
+    keyProducts: ["Феназепам", "Граммидин", "Ингавирин"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "Медпредставители"], careerSite: "https://valentapharm.com/", note: "" },
+    website: "https://valentapharm.com/",
+    logoColor: "#ea580c",
+    note: ""
+  },
+  {
+    name: "Вертекс",
+    fullName: "АО «Вертекс»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Санкт-Петербург"],
+    factories: [
+      { city: "Санкт-Петербург (ОЭЗ Новоорловская)", lat: 60.0500, lng: 30.2500, products: "Твёрдые и мягкие формы, косметика", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 29.5,
+    revenueYear: 2025,
+    yearEnteredRussia: 2001,
+    segments: ["Дженерики", "OTC", "Рецептурные"],
+    therapeuticAreas: ["Кардиология", "Дерматология", "Широкий профиль"],
+    keyProducts: ["Портфель дженериков и дермокосметики"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "QC/QA", "Продажи"], careerSite: "https://vertex.spb.ru/", note: "" },
+    website: "https://vertex.spb.ru/",
+    logoColor: "#4f46e5",
+    note: ""
+  },
+  {
+    name: "Гротекс (Solopharm)",
+    fullName: "ООО «Гротекс» (бренд Solopharm)",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Санкт-Петербург"],
+    factories: [
+      { city: "Санкт-Петербург", lat: 59.8333, lng: 30.3333, products: "Стерильные жидкие формы, офтальмология", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 26.9,
+    revenueYear: 2025,
+    yearEnteredRussia: 2010,
+    segments: ["Дженерики", "OTC"],
+    therapeuticAreas: ["Офтальмология", "ЛОР", "Широкий профиль"],
+    keyProducts: ["Solopharm — капли и стерильные растворы"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "https://solopharm.com/", note: "" },
+    website: "https://solopharm.com/",
+    logoColor: "#0284c7",
+    note: ""
+  },
+  {
+    name: "Нацимбио",
+    fullName: "АО «Нацимбио» (ГК «Ростех»)",
+    country: "РФ",
+    status: "Российская · госкорпорация",
+    hasProductionInRussia: true,
+    regions: ["Москва", "Пермский край", "Уфа", "Томская область"],
+    factories: [
+      { city: "Пермь (НПО «Микроген»)", lat: 58.0105, lng: 56.2502, products: "Вакцины, иммунобиология", gmp: "Да" },
+      { city: "Уфа", lat: 54.7388, lng: 55.9721, products: "Вакцины, препараты крови", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 23.9,
+    revenueYear: 2025,
+    yearEnteredRussia: 2013,
+    segments: ["Вакцины", "Биотех"],
+    therapeuticAreas: ["Иммунопрофилактика", "Инфекционные", "Гематология"],
+    keyProducts: ["Вакцины НКПП", "Препараты крови"],
+    hasRnD: true,
+    hr: { roles: ["Биопроизводство", "QC", "R&D"], careerSite: "https://natimbio.ru/", note: "Национальный оператор иммунобиологии. Включает «Микроген»." },
+    website: "https://natimbio.ru/",
+    logoColor: "#be123c",
+    note: ""
+  },
+  {
+    name: "Канонфарма",
+    fullName: "ООО «Канонфарма продакшн»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Московская область"],
+    factories: [
+      { city: "Щёлково (МО)", lat: 55.9203, lng: 38.0094, products: "Дженерики, онкология", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 17.8,
+    revenueYear: 2025,
+    yearEnteredRussia: 2009,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Кардиология", "Широкий профиль"],
+    keyProducts: ["Портфель дженериков, онкопрепараты"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "QC"], careerSite: "https://canonpharma.ru/", note: "" },
+    website: "https://canonpharma.ru/",
+    logoColor: "#7e22ce",
+    note: ""
+  },
+  {
+    name: "Северная звезда",
+    fullName: "АО «Северная звезда»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Санкт-Петербург", "Ленинградская область"],
+    factories: [
+      { city: "Кузьмоловский (ЛО)", lat: 60.1167, lng: 30.5000, products: "Дженерики, онкология", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: 17.9,
+    revenueYear: 2025,
+    yearEnteredRussia: 2008,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Кардиология", "Широкий профиль"],
+    keyProducts: ["Дженерики, онкопрепараты"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://nstar-spb.ru/",
+    logoColor: "#0e7490",
+    note: ""
+  },
+  {
+    name: "Активный Компонент",
+    fullName: "АО «Активный Компонент»",
+    country: "РФ",
+    status: "Российская · производитель АФИ",
+    hasProductionInRussia: true,
+    regions: ["Санкт-Петербург", "Ленинградская область"],
+    factories: [
+      { city: "Санкт-Петербург", lat: 59.9343, lng: 30.3351, products: "Активные фармацевтические субстанции (АФИ)", gmp: "Да" },
+      { city: "Пушкин (ОЭЗ)", lat: 59.7142, lng: 30.4163, products: "Синтез субстанций", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2009,
+    segments: ["Дженерики"],
+    therapeuticAreas: ["Производство субстанций (широкий профиль)"],
+    keyProducts: ["Десятки АФИ для российских производителей"],
+    hasRnD: true,
+    hr: { roles: ["Химики-синтетики", "R&D", "QC/QA", "Производство"], careerSite: "https://aktivcomponent.com/", note: "Один из крупнейших независимых производителей фармсубстанций в РФ." },
+    website: "https://aktivcomponent.com/",
+    logoColor: "#0891b2",
+    note: "Импортозамещение по активным фармацевтическим субстанциям."
+  },
+  {
+    name: "Полисан",
+    fullName: "ООО «НТФФ «ПОЛИСАН»",
+    country: "РФ",
+    status: "Российская · полный цикл",
+    hasProductionInRussia: true,
+    regions: ["Санкт-Петербург"],
+    factories: [
+      { city: "Санкт-Петербург", lat: 59.9343, lng: 30.3351, products: "Оригинальные препараты, инфузионные растворы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Неврология", "Гепатология", "Инфекционные"],
+    keyProducts: ["Цитофлавин", "Циклоферон", "Реамберин", "Ремаксол"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "QA/QC", "Медицина"], careerSite: "https://polysan.ru/", note: "Контрактное производство для зарубежных партнёров (Bayer, STADA)." },
+    website: "https://polysan.ru/",
+    logoColor: "#1d4ed8",
+    note: ""
+  },
+  {
+    name: "Эвалар",
+    fullName: "ЗАО «Эвалар»",
+    country: "РФ",
+    status: "Российская · лидер БАД/OTC",
+    hasProductionInRussia: true,
+    regions: ["Алтайский край"],
+    factories: [
+      { city: "Бийск", lat: 52.5394, lng: 85.2072, products: "БАД, OTC, фитопрепараты", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1991,
+    segments: ["OTC"],
+    therapeuticAreas: ["Витамины и БАД", "Фитотерапия", "Широкий профиль"],
+    keyProducts: ["Антистрессовые, витаминные и фитолинейки Эвалар"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "Маркетинг", "Продажи"], careerSite: "https://evalar.ru/", note: "Крупнейший российский производитель БАД и натуральных OTC." },
+    website: "https://evalar.ru/",
+    logoColor: "#16a34a",
+    note: ""
+  },
+  {
+    name: "Генериум",
+    fullName: "АО «ГЕНЕРИУМ»",
+    country: "РФ",
+    status: "Российская · биотех полного цикла",
+    hasProductionInRussia: true,
+    regions: ["Владимирская область"],
+    factories: [
+      { city: "Вольгинский (Владимирская обл.)", lat: 55.9610, lng: 39.2510, products: "Биотех, факторы свёртывания, диагностика", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2009,
+    segments: ["Биотех", "Оригинальные"],
+    therapeuticAreas: ["Гематология", "Орфанные заболевания", "Фтизиатрия (диагностика)"],
+    keyProducts: ["Факторы свёртывания крови", "Диаскинтест", "Орфанные биопрепараты"],
+    hasRnD: true,
+    hr: { roles: ["Учёные/R&D", "Биопроизводство", "Клинические исследования"], careerSite: "https://generium.ru/", note: "Один из ведущих биотех-центров полного цикла в РФ." },
+    website: "https://generium.ru/",
+    logoColor: "#0d9488",
+    note: ""
+  },
+  {
+    name: "Петровакс Фарм",
+    fullName: "ООО «НПО Петровакс Фарм»",
+    country: "РФ",
+    status: "Российская · вакцины и иммунобиология",
+    hasProductionInRussia: true,
+    regions: ["Московская область"],
+    factories: [
+      { city: "Покров (Московская обл.)", lat: 55.3600, lng: 37.5200, products: "Вакцины, иммуномодуляторы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1996,
+    segments: ["Вакцины", "Биотех", "Оригинальные"],
+    therapeuticAreas: ["Иммунопрофилактика", "Иммунология", "Инфекционные"],
+    keyProducts: ["Полиоксидоний", "Гриппол плюс", "Превенар 13 (локализация с Pfizer)"],
+    hasRnD: true,
+    hr: { roles: ["Биопроизводство", "R&D", "QA/QC", "Медицина"], careerSite: "https://petrovax.ru/", note: "Локализация пневмококковой вакцины Pfizer; собственные иммунопрепараты." },
+    website: "https://petrovax.ru/",
+    logoColor: "#be123c",
+    note: ""
+  },
+  {
+    name: "Нанолек",
+    fullName: "ООО «Нанолек»",
+    country: "РФ",
+    status: "Российская · вакцины и биотех",
+    hasProductionInRussia: true,
+    regions: ["Кировская область"],
+    factories: [
+      { city: "Лёвинцы (Кировская обл.)", lat: 58.7800, lng: 49.4000, products: "Вакцины, биопрепараты полного цикла", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2011,
+    segments: ["Вакцины", "Биотех"],
+    therapeuticAreas: ["Иммунопрофилактика (детская)", "Инфекционные"],
+    keyProducts: ["Вакцина против ВПЧ (Цегардекс)", "Комбинированные детские вакцины"],
+    hasRnD: true,
+    hr: { roles: ["Биопроизводство", "R&D", "QA/QC"], careerSite: "https://nanolek.ru/", note: "Локализация и собственная разработка вакцин, в т.ч. против ВПЧ." },
+    website: "https://nanolek.ru/",
+    logoColor: "#0ea5e9",
+    note: ""
+  },
+  {
+    name: "Натива",
+    fullName: "ООО «Натива»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Московская область"],
+    factories: [
+      { city: "Красногорск / Сабурово (МО)", lat: 55.8311, lng: 37.3300, products: "Дженерики, онкология, ингаляционные формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2008,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Пульмонология", "Гематология"],
+    keyProducts: ["Воспроизведённые онкопрепараты", "Ингаляционные ЛП"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "QC/QA"], careerSite: "https://nativa.pro/", note: "" },
+    website: "https://nativa.pro/",
+    logoColor: "#7c3aed",
+    note: ""
+  },
+  {
+    name: "Аксельфарм",
+    fullName: "ООО «Аксельфарм»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Москва"],
+    factories: [
+      { city: "Москва", lat: 55.7558, lng: 37.6173, products: "Онкология, биосимиляры, готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2018,
+    segments: ["Дженерики", "Биотех", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Гематология", "Иммунология"],
+    keyProducts: ["Воспроизведённые онко- и биопрепараты"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "QC/QA"], careerSite: "", note: "" },
+    website: "https://axelpharm.com/",
+    logoColor: "#9333ea",
+    note: ""
+  },
+  {
+    name: "Фарм-Синтез",
+    fullName: "ЗАО «Фарм-Синтез»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Москва"],
+    factories: [
+      { city: "Москва", lat: 55.7558, lng: 37.6173, products: "Пептидные и онкопрепараты, готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1996,
+    segments: ["Оригинальные", "Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Эндокринология", "Неврология"],
+    keyProducts: ["Бусерелин", "Пептидные препараты"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "QC/QA"], careerSite: "", note: "" },
+    website: "https://pharm-sintez.ru/",
+    logoColor: "#0369a1",
+    note: ""
+  },
+  {
+    name: "Медсинтез",
+    fullName: "ООО «Завод Медсинтез» (Уральский фармкластер)",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Свердловская область"],
+    factories: [
+      { city: "Новоуральск", lat: 57.2470, lng: 60.0935, products: "Инсулины, инфузионные растворы, готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2003,
+    segments: ["Биотех", "Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Эндокринология (диабет)", "Инфузионная терапия"],
+    keyProducts: ["Росинсулин", "Инфузионные растворы"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "QC/QA"], careerSite: "https://medsintez.com/", note: "Ядро Уральского фармацевтического кластера." },
+    website: "https://medsintez.com/",
+    logoColor: "#0d9488",
+    note: ""
+  },
+  {
+    name: "Авексима",
+    fullName: "АО «Авексима»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Иркутская область", "Москва"],
+    factories: [
+      { city: "Усолье-Сибирское (Авексима Сибирь)", lat: 52.7500, lng: 103.6400, products: "Готовые формы, OTC, таблетки", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2013,
+    segments: ["OTC", "Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Гастроэнтерология", "Простуда и грипп", "Широкий профиль"],
+    keyProducts: ["Портфель OTC и рецептурных дженериков"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA", "Маркетинг"], careerSite: "https://aveksima.ru/", note: "" },
+    website: "https://aveksima.ru/",
+    logoColor: "#ea580c",
+    note: ""
+  },
+  {
+    name: "ХимРар",
+    fullName: "ГК «ХимРар» (Центр высоких технологий)",
+    country: "РФ",
+    status: "Российская · R&D и инновации",
+    hasProductionInRussia: true,
+    regions: ["Московская область"],
+    factories: [
+      { city: "Химки (МО)", lat: 55.8970, lng: 37.4297, products: "Малотоннажный синтез, R&D, опытное производство", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1990,
+    segments: ["Оригинальные", "Биотех"],
+    therapeuticAreas: ["Инфекционные", "Онкология", "Неврология"],
+    keyProducts: ["Авифавир (фавипиравир)", "Скайфейзер", "Разработка новых молекул"],
+    hasRnD: true,
+    hr: { roles: ["Учёные/R&D", "Медицинская химия", "Клинические исследования"], careerSite: "https://chemrar.ru/", note: "Один из ведущих частных R&D-центров по разработке лекарств в РФ." },
+    website: "https://chemrar.ru/",
+    logoColor: "#6366f1",
+    note: ""
+  },
+  {
+    name: "Materia Medica",
+    fullName: "ООО «НПФ «Материа Медика Холдинг»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Москва", "Московская область"],
+    factories: [
+      { city: "Москва", lat: 55.7558, lng: 37.6173, products: "Готовые лекарственные формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1993,
+    segments: ["OTC", "Рецептурные", "Оригинальные"],
+    therapeuticAreas: ["Простуда и грипп", "Неврология", "Урология"],
+    keyProducts: ["Анаферон", "Тенотен", "Эргоферон", "Импаза"],
+    hasRnD: true,
+    hr: { roles: ["R&D", "Производство", "Маркетинг"], careerSite: "https://materiamedica.ru/", note: "" },
+    website: "https://materiamedica.ru/",
+    logoColor: "#0891b2",
+    note: ""
+  },
+  {
+    name: "Фармимэкс",
+    fullName: "АО «Фармимэкс»",
+    country: "РФ",
+    status: "Российская · дистрибуция и производство",
+    hasProductionInRussia: true,
+    regions: ["Москва", "Владимирская область"],
+    factories: [
+      { city: "Владимирская область", lat: 56.1290, lng: 40.4070, products: "Биотех, готовые формы (через дочерние активы)", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1991,
+    segments: ["Биотех", "Рецептурные", "Дженерики"],
+    therapeuticAreas: ["Гематология", "Орфанные заболевания", "Госпитальный сегмент"],
+    keyProducts: ["Дистрибуция + производство биопрепаратов"],
+    hasRnD: false,
+    hr: { roles: ["Логистика", "Производство", "Регистрация"], careerSite: "https://pharmimex.ru/", note: "Один из старейших фармдистрибьюторов РФ с производственными активами." },
+    website: "https://pharmimex.ru/",
+    logoColor: "#1d4ed8",
+    note: ""
+  },
+  {
+    name: "Татхимфармпрепараты",
+    fullName: "АО «Татхимфармпрепараты»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Республика Татарстан"],
+    factories: [
+      { city: "Казань", lat: 55.7963, lng: 49.1088, products: "Готовые формы, шовные материалы, медизделия", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1932,
+    segments: ["Дженерики", "OTC", "Рецептурные"],
+    therapeuticAreas: ["Широкий профиль", "Хирургия (шовные материалы)"],
+    keyProducts: ["Дженерики, таблетки, мази; шовные материалы"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "https://tatpharm.ru/", note: "Одно из старейших предприятий отрасли (с 1932 г.)." },
+    website: "https://tatpharm.ru/",
+    logoColor: "#b45309",
+    note: ""
+  },
+  {
+    name: "Дальхимфарм",
+    fullName: "ОАО «Дальхимфарм»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Хабаровский край"],
+    factories: [
+      { city: "Хабаровск", lat: 48.4827, lng: 135.0838, products: "Готовые формы, ампулы, таблетки, мази", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1939,
+    segments: ["Дженерики", "OTC"],
+    therapeuticAreas: ["Широкий профиль"],
+    keyProducts: ["Массовые дженерики, ампульные препараты"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "https://dalhimfarm.ru/", note: "Крупнейший производитель ЛС на Дальнем Востоке." },
+    website: "https://dalhimfarm.ru/",
+    logoColor: "#0e7490",
+    note: ""
+  },
+  {
+    name: "Усолье-Сибирский ХФЗ",
+    fullName: "ОАО «Усолье-Сибирский химико-фармацевтический завод»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Иркутская область"],
+    factories: [
+      { city: "Усолье-Сибирское", lat: 52.7500, lng: 103.6400, products: "Субстанции, готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1939,
+    segments: ["Дженерики", "OTC"],
+    therapeuticAreas: ["Широкий профиль"],
+    keyProducts: ["Субстанции и готовые формы"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://ushfz.ru/",
+    logoColor: "#65a30d",
+    note: ""
+  },
+  {
+    name: "Московский эндокринный завод",
+    fullName: "ФГУП «Московский эндокринный завод»",
+    country: "РФ",
+    status: "Российская · государственная",
+    hasProductionInRussia: true,
+    regions: ["Москва", "Брянская область"],
+    factories: [
+      { city: "Москва", lat: 55.7558, lng: 37.6173, products: "Наркотические анальгетики, гормоны, офтальмология", gmp: "Да" },
+      { city: "Брянск (площадка)", lat: 53.2521, lng: 34.3717, products: "Производство ЛП", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1943,
+    segments: ["Рецептурные", "Оригинальные"],
+    therapeuticAreas: ["Анестезиология и обезболивание", "Эндокринология", "Офтальмология"],
+    keyProducts: ["Опиоидные анальгетики", "Гормональные препараты"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "QC/QA", "Безопасность"], careerSite: "https://endopharm.ru/", note: "Ключевой государственный производитель наркотических анальгетиков." },
+    website: "https://endopharm.ru/",
+    logoColor: "#475569",
+    note: ""
+  },
+  {
+    name: "Самсон-Мед",
+    fullName: "ООО «Самсон-Мед»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Санкт-Петербург"],
+    factories: [
+      { city: "Санкт-Петербург", lat: 59.9343, lng: 30.3351, products: "Ферментные, гормональные, органопрепараты", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2002,
+    segments: ["Рецептурные", "Дженерики"],
+    therapeuticAreas: ["Гастроэнтерология", "Эндокринология", "Урология"],
+    keyProducts: ["Ферментные и органотропные препараты"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://samson-med.ru/",
+    logoColor: "#0284c7",
+    note: ""
+  },
+  {
+    name: "Тульская фармфабрика",
+    fullName: "АО «Тульская фармацевтическая фабрика»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Тульская область"],
+    factories: [
+      { city: "Тула", lat: 54.1930, lng: 37.6173, products: "Настойки, растворы, OTC", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1944,
+    segments: ["OTC", "Дженерики"],
+    therapeuticAreas: ["Широкий профиль", "Фитотерапия"],
+    keyProducts: ["Спиртовые настойки, антисептики, растворы"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://tulpharm.ru/",
+    logoColor: "#b45309",
+    note: ""
+  },
+  {
+    name: "Эколаб",
+    fullName: "ЗАО «ЭКОлаб»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Московская область"],
+    factories: [
+      { city: "Электрогорск (МО)", lat: 55.8830, lng: 38.7910, products: "Диагностикумы, дезсредства, ЛП", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1991,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Инфекционные (диагностика)", "Широкий профиль"],
+    keyProducts: ["Тест-системы, дезинфицирующие средства, ЛП"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "QC/QA"], careerSite: "https://ecolab.ru/", note: "" },
+    website: "https://ecolab.ru/",
+    logoColor: "#059669",
+    note: ""
+  },
+  {
+    name: "Фирн М",
+    fullName: "ЗАО «ФИРН М»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Москва"],
+    factories: [
+      { city: "Москва", lat: 55.7558, lng: 37.6173, products: "Пептидные препараты, готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1991,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Неврология", "Офтальмология"],
+    keyProducts: ["Семакс", "Селанк"],
+    hasRnD: true,
+    hr: { roles: ["Производство", "R&D", "QC/QA"], careerSite: "", note: "Оригинальные пептидные ноотропы (совместная разработка с РАН)." },
+    website: "https://firnm.ru/",
+    logoColor: "#6366f1",
+    note: ""
+  },
+  {
+    name: "Эском",
+    fullName: "ОАО «НПК «ЭСКОМ»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Ставропольский край"],
+    factories: [
+      { city: "Ставрополь", lat: 45.0445, lng: 41.9690, products: "Инфузионные растворы, ампулы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1997,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Инфузионная терапия", "Реаниматология"],
+    keyProducts: ["Инфузионные растворы в полимерной упаковке"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://escom-ru.ru/",
+    logoColor: "#0e7490",
+    note: ""
+  },
+  {
+    name: "Авва Рус",
+    fullName: "АО «АВВА РУС»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Нижегородская область", "Кировская область"],
+    factories: [
+      { city: "Балахна (Нижегородская обл.)", lat: 56.4900, lng: 43.6000, products: "Готовые лекарственные формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2002,
+    segments: ["Дженерики", "OTC", "Рецептурные"],
+    therapeuticAreas: ["Широкий профиль", "Неврология"],
+    keyProducts: ["Портфель дженериков и OTC"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://avva-rus.ru/",
+    logoColor: "#7c3aed",
+    note: ""
+  },
+  {
+    name: "Фармпроект",
+    fullName: "АО «Фармпроект»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Санкт-Петербург"],
+    factories: [
+      { city: "Санкт-Петербург", lat: 59.9343, lng: 30.3351, products: "Готовые формы, ЛОР, неврология", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1999,
+    segments: ["Дженерики", "OTC", "Рецептурные"],
+    therapeuticAreas: ["ЛОР", "Неврология", "Широкий профиль"],
+    keyProducts: ["Портфель рецептурных и OTC дженериков"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://pharmproject.ru/",
+    logoColor: "#0284c7",
+    note: ""
+  },
+  {
+    name: "Тверская фармфабрика",
+    fullName: "ОАО «Тверская фармацевтическая фабрика»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Тверская область"],
+    factories: [
+      { city: "Тверь", lat: 56.8587, lng: 35.9176, products: "Настойки, растворы, OTC", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1944,
+    segments: ["OTC", "Дженерики"],
+    therapeuticAreas: ["Широкий профиль", "Фитотерапия"],
+    keyProducts: ["Настойки, антисептики, OTC"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://tverfarm.ru/",
+    logoColor: "#b45309",
+    note: ""
+  },
+  {
+    name: "Московская фармфабрика",
+    fullName: "АО «Московская фармацевтическая фабрика»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Москва"],
+    factories: [
+      { city: "Москва", lat: 55.7558, lng: 37.6173, products: "Настойки, мази, растворы, OTC", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1939,
+    segments: ["OTC", "Дженерики"],
+    therapeuticAreas: ["Дерматология", "Широкий профиль"],
+    keyProducts: ["Мази, настойки, растворы"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://mosfarma.ru/",
+    logoColor: "#dc2626",
+    note: ""
+  },
+  {
+    name: "Ярославская фармфабрика",
+    fullName: "ЗАО «Ярославская фармацевтическая фабрика»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Ярославская область"],
+    factories: [
+      { city: "Ярославль", lat: 57.6261, lng: 39.8845, products: "Настойки, сиропы, OTC", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1939,
+    segments: ["OTC", "Дженерики"],
+    therapeuticAreas: ["Широкий профиль", "Фитотерапия"],
+    keyProducts: ["Настойки, сиропы, растворы"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://yarpharma.ru/",
+    logoColor: "#0d9488",
+    note: ""
+  },
+  {
+    name: "Кировская фармфабрика",
+    fullName: "АО «Кировская фармацевтическая фабрика»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Кировская область"],
+    factories: [
+      { city: "Киров", lat: 58.6035, lng: 49.6679, products: "Настойки, растворы, OTC", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1939,
+    segments: ["OTC", "Дженерики"],
+    therapeuticAreas: ["Широкий профиль"],
+    keyProducts: ["Настойки, антисептики, растворы"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://kirovpharm.ru/",
+    logoColor: "#65a30d",
+    note: ""
+  },
+  {
+    name: "Ивановская фармфабрика",
+    fullName: "АО «Ивановская фармацевтическая фабрика»",
+    country: "РФ",
+    status: "Российская",
+    hasProductionInRussia: true,
+    regions: ["Ивановская область"],
+    factories: [
+      { city: "Иваново", lat: 57.0004, lng: 40.9739, products: "Настойки, растворы, OTC", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1944,
+    segments: ["OTC", "Дженерики"],
+    therapeuticAreas: ["Широкий профиль", "Фитотерапия"],
+    keyProducts: ["Настойки, растворы, OTC"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "", note: "" },
+    website: "https://ivanovofarm.ru/",
+    logoColor: "#b45309",
+    note: ""
+  },
+  {
+    name: "НИЦЭМ им. Гамалеи",
+    fullName: "ФГБУ «НИЦЭМ им. Н.Ф. Гамалеи» Минздрава России",
+    country: "РФ",
+    status: "Российская · государственный НИЦ",
+    hasProductionInRussia: true,
+    regions: ["Москва"],
+    factories: [
+      { city: "Москва", lat: 55.7558, lng: 37.6173, products: "Вакцины (разработка), опытное производство", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1891,
+    segments: ["Вакцины", "Биотех", "Оригинальные"],
+    therapeuticAreas: ["Иммунопрофилактика", "Инфекционные", "Эпидемиология"],
+    keyProducts: ["Спутник V (Гам-КОВИД-Вак)", "Спутник Лайт"],
+    hasRnD: true,
+    hr: { roles: ["Учёные/R&D", "Вирусология", "Клинические исследования"], careerSite: "https://gamaleya.org/", note: "Разработчик первой зарегистрированной вакцины от COVID-19. Производство — через партнёров." },
+    website: "https://gamaleya.org/",
+    logoColor: "#be123c",
+    note: ""
+  },
+  {
+    name: "ГНЦ ВБ «Вектор»",
+    fullName: "ФБУН ГНЦ ВБ «Вектор» Роспотребнадзора",
+    country: "РФ",
+    status: "Российская · государственный НИЦ",
+    hasProductionInRussia: true,
+    regions: ["Новосибирская область"],
+    factories: [
+      { city: "Кольцово (Новосибирская обл.)", lat: 54.9367, lng: 83.1800, products: "Вакцины, диагностикумы, опытное производство", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1974,
+    segments: ["Вакцины", "Биотех"],
+    therapeuticAreas: ["Иммунопрофилактика", "Вирусология", "Инфекционные"],
+    keyProducts: ["ЭпиВакКорона", "Тест-системы и диагностикумы"],
+    hasRnD: true,
+    hr: { roles: ["Учёные/R&D", "Вирусология", "QC"], careerSite: "https://www.vector.nsc.ru/", note: "Один из крупнейших вирусологических центров России." },
+    website: "https://www.vector.nsc.ru/",
+    logoColor: "#0369a1",
+    note: ""
+  },
+  {
+    name: "ФНЦИРИП им. Чумакова",
+    fullName: "ФГАНУ «ФНЦИРИП им. М.П. Чумакова РАН»",
+    country: "РФ",
+    status: "Российская · государственный НИЦ",
+    hasProductionInRussia: true,
+    regions: ["Москва"],
+    factories: [
+      { city: "Москва (пос. Института полиомиелита)", lat: 55.5500, lng: 37.4000, products: "Вакцины (полиомиелит, КЭ, COVID-19)", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1955,
+    segments: ["Вакцины", "Биотех"],
+    therapeuticAreas: ["Иммунопрофилактика", "Инфекционные"],
+    keyProducts: ["КовиВак", "Вакцины против полиомиелита", "Вакцина против клещевого энцефалита"],
+    hasRnD: true,
+    hr: { roles: ["Учёные/R&D", "Вирусология", "Биопроизводство"], careerSite: "https://www.chumakovs.su/", note: "Полный цикл от разработки до промышленного выпуска вакцин." },
+    website: "https://www.chumakovs.su/",
+    logoColor: "#9333ea",
+    note: ""
+  },
+  /* ===================== СОВМЕСТНЫЕ ПРЕДПРИЯТИЯ / ЛОКАЛИЗАЦИЯ ===================== */
+  {
+    name: "Верофарм",
+    fullName: "АО «Верофарм» (группа Abbott)",
+    country: "СП",
+    status: "Российская в группе Abbott",
+    hasProductionInRussia: true,
+    regions: ["Воронежская область", "Белгородская область", "Владимирская область"],
+    factories: [
+      { city: "Воронеж", lat: 51.6720, lng: 39.1843, products: "Готовые формы, пластыри", gmp: "Да" },
+      { city: "Белгород", lat: 50.5977, lng: 36.5858, products: "Таблетки, капсулы", gmp: "Да" },
+      { city: "Покров", lat: 55.9181, lng: 39.1736, products: "Онкология, готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1997,
+    segments: ["Дженерики", "OTC", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Гинекология", "Широкий профиль"],
+    keyProducts: ["Портфель Abbott в РФ", "Пластыри"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA", "Продажи"], careerSite: "https://www.veropharm.ru/", note: "Основана в России, входит в международную группу Abbott." },
+    website: "https://www.veropharm.ru/",
+    logoColor: "#0f766e",
+    note: ""
+  },
+  {
+    name: "Нижфарм (STADA)",
+    fullName: "АО «Нижфарм» (группа STADA)",
+    country: "СП",
+    status: "Российская в группе STADA",
+    hasProductionInRussia: true,
+    regions: ["Нижегородская область", "Москва (Сотекс)"],
+    factories: [
+      { city: "Нижний Новгород", lat: 56.3269, lng: 44.0059, products: "Мягкие, твёрдые формы", gmp: "Да" },
+      { city: "Сергиев Посад (Сотекс)", lat: 56.3000, lng: 38.1333, products: "Инъекционные формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1919,
+    segments: ["Дженерики", "OTC", "Рецептурные"],
+    therapeuticAreas: ["Дерматология", "Кардиология", "Широкий профиль"],
+    keyProducts: ["Портфель STADA в РФ"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA", "Продажи"], careerSite: "https://nizhpharm.ru/", note: "В 2025 г. сместила Bayer с 1 места розничного рейтинга RNC Pharma." },
+    website: "https://nizhpharm.ru/",
+    logoColor: "#1e40af",
+    note: "Лидер розничного рейтинга RNC Pharma по итогам 2025 г."
+  },
+  {
+    name: "Акрихин",
+    fullName: "АО «Акрихин» (группа Polpharma)",
+    country: "СП",
+    status: "Российская в группе Polpharma",
+    hasProductionInRussia: true,
+    regions: ["Московская область"],
+    factories: [
+      { city: "Старая Купавна (МО)", lat: 55.8061, lng: 38.1731, products: "Готовые формы, широкий профиль", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1936,
+    segments: ["Дженерики", "OTC", "Рецептурные"],
+    therapeuticAreas: ["Дерматология", "Эндокринология", "Широкий профиль"],
+    keyProducts: ["Портфель дженериков"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA", "Продажи"], careerSite: "https://akrikhin.ru/", note: "Один из старейших фармзаводов России (с 1936 г.)." },
+    website: "https://akrikhin.ru/",
+    logoColor: "#b91c1c",
+    note: ""
+  },
+  {
+    name: "Биосинтез (Sun Pharma)",
+    fullName: "ПАО «Биосинтез» (группа Sun Pharma)",
+    country: "СП",
+    status: "Российская в группе Sun Pharma (Индия)",
+    hasProductionInRussia: true,
+    regions: ["Пензенская область"],
+    factories: [
+      { city: "Пенза", lat: 53.2007, lng: 45.0046, products: "Антибиотики, инфузии, готовые формы, субстанции", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1955,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Антибиотики", "Инфузионная терапия", "Широкий профиль"],
+    keyProducts: ["Антибиотики, инфузионные растворы"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "https://biosintez.com/", note: "Контролируется индийской Sun Pharma." },
+    website: "https://biosintez.com/",
+    logoColor: "#ca8a04",
+    note: ""
+  },
+  {
+    name: "ЗиО-Здоровье (STADA)",
+    fullName: "АО «ЗиО-Здоровье» (группа STADA)",
+    country: "СП",
+    status: "Российская в группе STADA",
+    hasProductionInRussia: true,
+    regions: ["Московская область"],
+    factories: [
+      { city: "Подольск (МО)", lat: 55.4312, lng: 37.5457, products: "Твёрдые лекарственные формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: "н/д",
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2005,
+    segments: ["Дженерики", "OTC", "Рецептурные"],
+    therapeuticAreas: ["Широкий профиль", "Кардиология"],
+    keyProducts: ["Локализованный портфель STADA"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "QC/QA"], careerSite: "https://stada.ru/", note: "Производственная площадка STADA в Подмосковье." },
+    website: "https://stada.ru/",
+    logoColor: "#2563eb",
+    note: ""
+  },
+  /* ===================== ЗАРУБЕЖНЫЕ КОМПАНИИ ===================== */
+  {
+    name: "Bayer",
+    fullName: "Bayer AG (Германия)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Москва", "Московская область"],
+    factories: [
+      { city: "Москва (упаковка/локализация)", lat: 55.7558, lng: 37.6173, products: "Локализация отдельных препаратов (контрактно)", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 100000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1994,
+    segments: ["Оригинальные", "Рецептурные", "OTC"],
+    therapeuticAreas: ["Кардиология", "Онкология", "Гинекология", "Офтальмология"],
+    keyProducts: ["Ксарелто", "Аспирин", "Мирена", "Эйлеа"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Маркетинг", "Регистрация"], careerSite: "https://www.career.bayer.ru/", note: "Локализация — преимущественно контрактное производство и упаковка." },
+    website: "https://www.bayer.ru/",
+    logoColor: "#16a34a",
+    note: "Историко-крупнейший зарубежный игрок; в 2025 г. уступил 1 место рознице «Нижфарму»."
+  },
+  {
+    name: "Novartis",
+    fullName: "Novartis AG (Швейцария)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Санкт-Петербург", "Москва"],
+    factories: [
+      { city: "Санкт-Петербург (Novartis Neva)", lat: 59.9500, lng: 30.3167, products: "Готовые лекарственные формы (локализация)", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 76000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1996,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Кардиология", "Офтальмология", "Иммунология"],
+    keyProducts: ["Гилениа", "Козентикс", "Луцентис"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.novartis.com/careers", note: "Завод «Novartis Neva» в СПб для локализации." },
+    website: "https://www.novartis.ru/",
+    logoColor: "#fb923c",
+    note: ""
+  },
+  {
+    name: "Sanofi",
+    fullName: "Sanofi (Франция)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Орловская область"],
+    factories: [
+      { city: "Орёл (Санофи-Авентис Восток)", lat: 52.9685, lng: 36.0692, products: "Инсулины (локализация полного цикла)", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 86000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1970,
+    segments: ["Оригинальные", "Рецептурные", "Вакцины"],
+    therapeuticAreas: ["Эндокринология (диабет)", "Иммунология", "Вакцинология"],
+    keyProducts: ["Лантус", "Туджео", "Дюпиксент"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "Медпредставители", "Регистрация"], careerSite: "https://www.sanofi.com/careers", note: "Завод в Орле — локализованное производство инсулинов." },
+    website: "https://www.sanofi.ru/",
+    logoColor: "#7c3aed",
+    note: ""
+  },
+  {
+    name: "KRKA",
+    fullName: "KRKA d.d. (Словения)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Московская область"],
+    factories: [
+      { city: "Истра (МО)", lat: 55.9145, lng: 36.8575, products: "Дженерики, готовые формы", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 11000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2003,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Кардиология", "Гастроэнтерология", "Неврология"],
+    keyProducts: ["Лозап", "Нольпаза", "Атакванд"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "Медпредставители"], careerSite: "https://www.krka.biz/", note: "Завод «КРКА-РУС» в Истре." },
+    website: "https://www.krka.ru/",
+    logoColor: "#2563eb",
+    note: ""
+  },
+  {
+    name: "Gedeon Richter",
+    fullName: "Gedeon Richter Plc. (Венгрия)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Московская область"],
+    factories: [
+      { city: "Егорьевск (МО)", lat: 55.3833, lng: 39.0333, products: "Готовые формы, гинекология", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 12000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1996,
+    segments: ["Дженерики", "Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Гинекология", "Психиатрия", "Неврология"],
+    keyProducts: ["Эсмия", "Мидиана", "Кагоцел (партнёрство)"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "Медпредставители"], careerSite: "https://www.gedeonrichter.com/", note: "Завод в Егорьевске." },
+    website: "https://www.g-richter.ru/",
+    logoColor: "#0891b2",
+    note: ""
+  },
+  {
+    name: "Servier",
+    fullName: "Servier (Франция)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Москва"],
+    factories: [
+      { city: "Москва (Сердикс)", lat: 55.7558, lng: 37.6173, products: "Готовые формы, кардиология", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 22000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Кардиология", "Онкология", "Диабетология"],
+    keyProducts: ["Предуктал", "Диабетон", "Нолипрел"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "Медпредставители", "Медицина"], careerSite: "https://servier.com/en/careers/", note: "Завод «Сердикс» в Москве." },
+    website: "https://servier.ru/",
+    logoColor: "#dc2626",
+    note: "Входит в топ-10 розничного рынка РФ."
+  },
+  {
+    name: "Takeda",
+    fullName: "Takeda Pharmaceutical (Япония)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Ярославская область"],
+    factories: [
+      { city: "Ярославль", lat: 57.6261, lng: 39.8845, products: "Готовые формы (локализация)", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 49000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Гастроэнтерология", "Онкология", "Неврология"],
+    keyProducts: ["Кардиомагнил", "Актовегин", "Нольпаза"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "Медпредставители"], careerSite: "https://www.takeda.com/careers/", note: "Завод в Ярославле." },
+    website: "https://www.takeda.com/ru-ru/",
+    logoColor: "#e11d48",
+    note: ""
+  },
+  {
+    name: "AstraZeneca",
+    fullName: "AstraZeneca plc (Великобритания/Швеция)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Калужская область"],
+    factories: [
+      { city: "Воробьёво (Калужская обл.)", lat: 55.1600, lng: 36.4600, products: "Готовые формы полного цикла (локализация)", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 89000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1993,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Кардиология", "Эндокринология (диабет)", "Пульмонология"],
+    keyProducts: ["Форсига", "Тагриссо", "Симбикорт", "Крестор"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "Медпредставители", "Медицина", "Регистрация"], careerSite: "https://careers.astrazeneca.com/", note: "Завод в Калужской области — локализация полного цикла ряда препаратов." },
+    website: "https://www.astrazeneca.ru/",
+    logoColor: "#7c3aed",
+    note: ""
+  },
+  {
+    name: "Novo Nordisk",
+    fullName: "Novo Nordisk A/S (Дания)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Калужская область"],
+    factories: [
+      { city: "Грабцево (Калуга)", lat: 54.5900, lng: 36.3600, products: "Инсулины (локализованное производство)", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 64000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1923,
+    segments: ["Оригинальные", "Биотех"],
+    therapeuticAreas: ["Эндокринология (диабет)", "Ожирение", "Гемофилия"],
+    keyProducts: ["Левемир", "НовоРапид", "Тресиба"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "Медпредставители", "Медицина"], careerSite: "https://www.novonordisk.com/careers.html", note: "Завод по выпуску инсулинов в Калуге." },
+    website: "https://www.novonordisk.ru/",
+    logoColor: "#1d4ed8",
+    note: ""
+  },
+  {
+    name: "Berlin-Chemie / Menarini",
+    fullName: "Berlin-Chemie AG (группа Menarini, Италия/Германия)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Калужская область"],
+    factories: [
+      { city: "Калуга", lat: 54.5293, lng: 36.2754, products: "Готовые лекарственные формы (локализация)", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 17000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Оригинальные", "Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Эндокринология (диабет)", "Гастроэнтерология", "Кардиология"],
+    keyProducts: ["Эспумизан", "Манинил", "Мезим"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "Медпредставители"], careerSite: "https://www.berlin-chemie.ru/", note: "Локализация в Калужской области." },
+    website: "https://www.berlin-chemie.ru/",
+    logoColor: "#0891b2",
+    note: ""
+  },
+  {
+    name: "Pfizer",
+    fullName: "Pfizer Inc. (США)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие + локализация по контракту",
+    hasProductionInRussia: true,
+    regions: ["Ярославская область", "Московская область"],
+    factories: [
+      { city: "Ярославль (через партнёра)", lat: 57.6261, lng: 39.8845, products: "Контрактная локализация отдельных препаратов", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 88000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Оригинальные", "Рецептурные", "Вакцины"],
+    therapeuticAreas: ["Онкология", "Иммунология", "Вакцинология", "Кардиология"],
+    keyProducts: ["Превенар 13 (локализация с Петровакс)", "Прежевалин", "Вайдуриан"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.pfizer.com/about/careers", note: "Локализация преимущественно по контракту с российскими партнёрами." },
+    website: "https://www.pfizer.com/",
+    logoColor: "#2563eb",
+    note: ""
+  },
+  {
+    name: "Teva",
+    fullName: "Teva Pharmaceutical Industries (Израиль)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией",
+    hasProductionInRussia: true,
+    regions: ["Ярославская область"],
+    factories: [
+      { city: "Ярославль", lat: 57.6261, lng: 39.8845, products: "Готовые формы (завод в составе группы Р-Фарм)", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 37000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1995,
+    segments: ["Дженерики", "Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Неврология", "Респираторные", "Широкий профиль"],
+    keyProducts: ["Портфель дженериков Teva", "Копаксон"],
+    hasRnD: false,
+    hr: { roles: ["Производство", "Медпредставители"], careerSite: "https://www.tevapharm.com/careers/", note: "Ярославский завод вошёл в группу Р-Фарм." },
+    website: "https://www.teva.ru/",
+    logoColor: "#1d4ed8",
+    note: ""
+  },
+  {
+    name: "Sandoz",
+    fullName: "Sandoz Group AG (Швейцария)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 21000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1996,
+    segments: ["Дженерики", "Биотех"],
+    therapeuticAreas: ["Антибиотики", "Биоаналоги", "Широкий профиль"],
+    keyProducts: ["Дженерики и биосимиляры Sandoz"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.sandoz.com/careers", note: "Дженериковое подразделение, выделенное из Novartis." },
+    website: "https://www.sandoz.com/",
+    logoColor: "#fb923c",
+    note: ""
+  },
+  {
+    name: "Boehringer Ingelheim",
+    fullName: "Boehringer Ingelheim (Германия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 53000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1993,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Эндокринология (диабет)", "Пульмонология", "Кардиология"],
+    keyProducts: ["Джардинс", "Спиолто", "Прадакса"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.boehringer-ingelheim.com/careers", note: "Коммерческое присутствие; часть производства локализуется по контракту." },
+    website: "https://www.boehringer-ingelheim.com/",
+    logoColor: "#0d9488",
+    note: ""
+  },
+  {
+    name: "Johnson & Johnson",
+    fullName: "Johnson & Johnson / Janssen (США)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 130000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Иммунология", "Психиатрия", "Инфекционные"],
+    keyProducts: ["Стелара", "Симпони", "Дарзалекс"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.careers.jnj.com/", note: "Фармподразделение Janssen; коммерческое присутствие в РФ." },
+    website: "https://www.jnj.com/",
+    logoColor: "#dc2626",
+    note: ""
+  },
+  {
+    name: "Roche",
+    fullName: "F. Hoffmann-La Roche AG (Швейцария)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 103000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1991,
+    segments: ["Оригинальные", "Биотех"],
+    therapeuticAreas: ["Онкология", "Неврология", "Офтальмология", "Гематология"],
+    keyProducts: ["Герцептин", "Авастин", "Окревус"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Диагностика", "Регистрация"], careerSite: "https://careers.roche.com/", note: "Лидер в онкологии; присутствие в фарме и диагностике." },
+    website: "https://www.roche.ru/",
+    logoColor: "#1d4ed8",
+    note: ""
+  },
+  {
+    name: "MSD",
+    fullName: "Merck & Co., Inc. / MSD (США)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие + локализация по контракту",
+    hasProductionInRussia: true,
+    regions: ["Москва", "Московская область"],
+    factories: [
+      { city: "Локализация по контракту (РФ)", lat: 55.7558, lng: 37.6173, products: "Контрактная локализация отдельных препаратов", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 71000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1991,
+    segments: ["Оригинальные", "Вакцины"],
+    therapeuticAreas: ["Онкология", "Вакцинология", "Инфекционные", "Кардиология"],
+    keyProducts: ["Китруда", "Гардасил", "Янувия"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://jobs.merck.com/", note: "Известна как MSD за пределами США и Канады." },
+    website: "https://www.msd.ru/",
+    logoColor: "#0d9488",
+    note: ""
+  },
+  {
+    name: "GSK",
+    fullName: "GSK plc (GlaxoSmithKline, Великобритания)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 70000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Оригинальные", "Вакцины", "Рецептурные"],
+    therapeuticAreas: ["Пульмонология", "Вакцинология", "ВИЧ", "Иммунология"],
+    keyProducts: ["Серетид", "Аугментин", "вакцины (исторически локализация с Биннофарм)"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.gsk.com/en-gb/careers/", note: "Часть вакцин исторически локализовалась с российскими партнёрами." },
+    website: "https://www.gsk.com/",
+    logoColor: "#ea580c",
+    note: ""
+  },
+  {
+    name: "Eli Lilly",
+    fullName: "Eli Lilly and Company (США)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 43000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Оригинальные", "Биотех"],
+    therapeuticAreas: ["Эндокринология (диабет/ожирение)", "Онкология", "Неврология", "Иммунология"],
+    keyProducts: ["Хумалог", "Трулисити", "Тальц"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://careers.lilly.com/", note: "Коммерческое присутствие в РФ." },
+    website: "https://www.lilly.com/",
+    logoColor: "#dc2626",
+    note: ""
+  },
+  {
+    name: "Bristol Myers Squibb",
+    fullName: "Bristol Myers Squibb (США)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 34000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Оригинальные", "Биотех"],
+    therapeuticAreas: ["Онкология", "Гематология", "Иммунология", "Кардиология"],
+    keyProducts: ["Опдиво", "Эликвис", "Ревлимид"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://careers.bms.com/", note: "Коммерческое присутствие; сильная онкологическая линейка." },
+    website: "https://www.bms.com/",
+    logoColor: "#2563eb",
+    note: ""
+  },
+  {
+    name: "AbbVie",
+    fullName: "AbbVie Inc. (США)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 50000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2013,
+    segments: ["Оригинальные", "Биотех"],
+    therapeuticAreas: ["Иммунология", "Онкология", "Гастроэнтерология", "Неврология"],
+    keyProducts: ["Хумира", "Скайризи", "Ринвок"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://careers.abbvie.com/", note: "Выделена из Abbott в 2013 г." },
+    website: "https://www.abbvie.com/",
+    logoColor: "#0369a1",
+    note: ""
+  },
+  {
+    name: "Amgen",
+    fullName: "Amgen Inc. (США)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 28000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2011,
+    segments: ["Биотех", "Оригинальные"],
+    therapeuticAreas: ["Онкология", "Кардиология", "Остеология", "Гематология"],
+    keyProducts: ["Пролиа", "Эксджива", "Репата"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://careers.amgen.com/", note: "Один из крупнейших мировых биотех-производителей." },
+    website: "https://www.amgen.com/",
+    logoColor: "#1d4ed8",
+    note: ""
+  },
+  {
+    name: "Merck KGaA",
+    fullName: "Merck KGaA (Германия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 63000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Эндокринология", "Онкология", "Неврология", "Репродукция"],
+    keyProducts: ["Эутирокс", "Конкор", "Гонал-Ф"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.merckgroup.com/en/careers.html", note: "Старейшая фармкомпания мира (немецкая Merck, отдельно от MSD)." },
+    website: "https://www.merckgroup.com/",
+    logoColor: "#7c3aed",
+    note: ""
+  },
+  {
+    name: "Fresenius Kabi",
+    fullName: "Fresenius Kabi AG (Германия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 42000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1996,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Клиническое питание", "Инфузионная терапия", "Онкология"],
+    keyProducts: ["Растворы для инфузий", "Парентеральное питание", "Онкодженерики"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Логистика", "Регистрация"], careerSite: "https://www.fresenius-kabi.com/careers", note: "Лидер в инфузионной терапии и клиническом питании." },
+    website: "https://www.fresenius-kabi.com/",
+    logoColor: "#0d9488",
+    note: ""
+  },
+  {
+    name: "B. Braun",
+    fullName: "B. Braun SE (Германия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва", "Санкт-Петербург"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 66000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1993,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Инфузионная терапия", "Хирургия", "Нефрология (диализ)"],
+    keyProducts: ["Растворы для инфузий", "Антисептики (Пронтосан)", "Медизделия"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Логистика", "Сервис"], careerSite: "https://www.bbraun.com/en/career.html", note: "Препараты и медицинские изделия для стационаров." },
+    website: "https://www.bbraun.ru/",
+    logoColor: "#16a34a",
+    note: ""
+  },
+  {
+    name: "Recordati",
+    fullName: "Recordati S.p.A. (Италия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 4500,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2008,
+    segments: ["Оригинальные", "Рецептурные", "OTC"],
+    therapeuticAreas: ["Урология", "Орфанные заболевания", "Кардиология"],
+    keyProducts: ["Урорек", "Орфанные препараты"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.recordati.com/en/careers/", note: "Специализация на орфанных и урологических препаратах." },
+    website: "https://www.recordati.com/",
+    logoColor: "#dc2626",
+    note: ""
+  },
+  {
+    name: "Egis",
+    fullName: "Egis Pharmaceuticals PLC (Венгрия, группа Servier)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 5500,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1994,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Кардиология", "Неврология", "Психиатрия"],
+    keyProducts: ["Эгилок", "Грандаксин", "Бетасерк"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.egis.health/", note: "Входит в группу Servier." },
+    website: "https://www.egis.ru/",
+    logoColor: "#b91c1c",
+    note: ""
+  },
+  {
+    name: "Adamed",
+    fullName: "Adamed Pharma S.A. (Польша)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 2500,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2013,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Кардиология", "Неврология", "Широкий профиль"],
+    keyProducts: ["Портфель дженериков Adamed"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.adamed.com/en/career", note: "" },
+    website: "https://www.adamed.com/",
+    logoColor: "#0891b2",
+    note: ""
+  },
+  {
+    name: "Hemofarm (STADA)",
+    fullName: "Hemofarm A.D. (Сербия, группа STADA)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 5000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2006,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Кардиология", "Неврология", "Широкий профиль"],
+    keyProducts: ["Портфель дженериков Hemofarm"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.hemofarm.com/", note: "Сербский производитель в составе STADA; локализация через «Нижфарм»." },
+    website: "https://www.hemofarm.com/",
+    logoColor: "#2563eb",
+    note: ""
+  },
+  {
+    name: "Acino",
+    fullName: "Acino International AG (Швейцария)",
+    country: "Зарубеж",
+    status: "Зарубежная · с локализацией по контракту",
+    hasProductionInRussia: true,
+    regions: ["Москва", "Московская область"],
+    factories: [
+      { city: "Локализация по контракту (РФ)", lat: 55.7558, lng: 37.6173, products: "Контрактная локализация готовых форм", gmp: "Да" }
+    ],
+    employeesRussia: "н/д",
+    employeesGlobal: 3000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2014,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Кардиология", "Неврология", "ЦНС"],
+    keyProducts: ["Трансдермальные системы", "Кардио- и ЦНС-дженерики"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация", "Производство (контракт)"], careerSite: "https://acino.swiss/career/", note: "Локализация через контрактных партнёров в РФ." },
+    website: "https://acino.swiss/",
+    logoColor: "#dc2626",
+    note: ""
+  },
+  {
+    name: "Zentiva",
+    fullName: "Zentiva k.s. (Чехия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 5000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2009,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Кардиология", "ЦНС", "Широкий профиль"],
+    keyProducts: ["Портфель дженериков Zentiva"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.zentiva.com/careers", note: "Бывшее дженериковое подразделение Sanofi в Центральной Европе." },
+    website: "https://www.zentiva.com/",
+    logoColor: "#ea580c",
+    note: ""
+  },
+  {
+    name: "Viatris",
+    fullName: "Viatris Inc. (Mylan, США)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 38000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2007,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["ВИЧ", "Кардиология", "Неврология", "Широкий профиль"],
+    keyProducts: ["Портфель дженериков", "Антиретровирусные"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.viatris.com/en/careers", note: "Образована слиянием Mylan и Upjohn (Pfizer)." },
+    website: "https://www.viatris.com/",
+    logoColor: "#0369a1",
+    note: ""
+  },
+  {
+    name: "Hikma",
+    fullName: "Hikma Pharmaceuticals PLC (Иордания/Великобритания)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 9000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2015,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Госпитальный сегмент", "Онкология", "Широкий профиль"],
+    keyProducts: ["Инъекционные и госпитальные дженерики"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.hikma.com/careers/", note: "" },
+    website: "https://www.hikma.com/",
+    logoColor: "#16a34a",
+    note: ""
+  },
+  {
+    name: "Cipla",
+    fullName: "Cipla Limited (Индия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 25000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2010,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Пульмонология", "ВИЧ", "Онкология"],
+    keyProducts: ["Ингаляционные препараты", "Антиретровирусные дженерики"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.cipla.com/careers", note: "Один из крупнейших индийских производителей." },
+    website: "https://www.cipla.com/",
+    logoColor: "#0891b2",
+    note: ""
+  },
+  {
+    name: "Aurobindo",
+    fullName: "Aurobindo Pharma Limited (Индия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 27000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2012,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Антибиотики", "Кардиология", "Широкий профиль"],
+    keyProducts: ["Антибиотики и широкий портфель дженериков"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.aurobindo.com/careers/", note: "" },
+    website: "https://www.aurobindo.com/",
+    logoColor: "#7c3aed",
+    note: ""
+  },
+  {
+    name: "Glenmark",
+    fullName: "Glenmark Pharmaceuticals Ltd. (Индия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 14000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2009,
+    segments: ["Дженерики", "Рецептурные", "OTC"],
+    therapeuticAreas: ["Дерматология", "Пульмонология", "Широкий профиль"],
+    keyProducts: ["Момат", "Кандидерм", "Аскорил"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://www.glenmarkpharma.com/careers", note: "Известна препаратами в дерматологии и респираторике." },
+    website: "https://www.glenmarkpharma.com/",
+    logoColor: "#dc2626",
+    note: ""
+  },
+  {
+    name: "Dr. Reddy's",
+    fullName: "Dr. Reddy's Laboratories Ltd. (Индия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 25000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1992,
+    segments: ["Дженерики", "Рецептурные"],
+    therapeuticAreas: ["Гастроэнтерология", "Онкология", "Широкий профиль"],
+    keyProducts: ["Найз", "Омез", "Кетонал"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Регистрация"], careerSite: "https://careers.drreddys.com/", note: "Один из старейших индийских игроков на рынке РФ." },
+    website: "https://www.drreddys.com/",
+    logoColor: "#0369a1",
+    note: ""
+  },
+  {
+    name: "Astellas",
+    fullName: "Astellas Pharma Inc. (Япония)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 14000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1994,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Урология", "Трансплантология"],
+    keyProducts: ["Кстанди", "Везикар", "Програф"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.astellas.com/en/careers", note: "" },
+    website: "https://www.astellas.com/",
+    logoColor: "#be123c",
+    note: ""
+  },
+  {
+    name: "Daiichi Sankyo",
+    fullName: "Daiichi Sankyo Co., Ltd. (Япония)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 18000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2008,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Кардиология", "Онкология"],
+    keyProducts: ["Олмесартан", "Энхерту"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.daiichisankyo.com/careers/", note: "" },
+    website: "https://www.daiichisankyo.com/",
+    logoColor: "#dc2626",
+    note: ""
+  },
+  {
+    name: "Pierre Fabre",
+    fullName: "Pierre Fabre Group (Франция)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 10000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1996,
+    segments: ["Оригинальные", "OTC"],
+    therapeuticAreas: ["Дерматология", "Онкология", "Дермокосметика"],
+    keyProducts: ["Avène", "Ducray", "онкопрепараты"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Маркетинг", "Регистрация"], careerSite: "https://www.pierre-fabre.com/en/careers", note: "Известна дермокосметикой (Avène) и онкологией." },
+    website: "https://www.pierre-fabre.com/",
+    logoColor: "#0d9488",
+    note: ""
+  },
+  {
+    name: "Chiesi",
+    fullName: "Chiesi Farmaceutici S.p.A. (Италия)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 7000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2008,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Пульмонология", "Неонатология", "Орфанные заболевания"],
+    keyProducts: ["Фостер", "Куросурф"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.chiesi.com/en/careers/", note: "" },
+    website: "https://www.chiesi.com/",
+    logoColor: "#0891b2",
+    note: ""
+  },
+  {
+    name: "Ferring",
+    fullName: "Ferring Pharmaceuticals (Швейцария)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 7000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1996,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Репродуктивное здоровье", "Урология", "Гастроэнтерология"],
+    keyProducts: ["Менопур", "Пентаса", "Минирин"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.ferring.com/careers/", note: "" },
+    website: "https://www.ferring.com/",
+    logoColor: "#1d4ed8",
+    note: ""
+  },
+  {
+    name: "Ipsen",
+    fullName: "Ipsen S.A. (Франция)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 5700,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1996,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Онкология", "Неврология", "Эндокринология"],
+    keyProducts: ["Диспорт", "Соматулин", "Декапептил"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.ipsen.com/careers/", note: "" },
+    website: "https://www.ipsen.com/",
+    logoColor: "#9333ea",
+    note: ""
+  },
+  {
+    name: "Lundbeck",
+    fullName: "H. Lundbeck A/S (Дания)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 5600,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 1995,
+    segments: ["Оригинальные", "Рецептурные"],
+    therapeuticAreas: ["Психиатрия", "Неврология"],
+    keyProducts: ["Бринтелликс", "Ципралекс", "Азилект"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.lundbeck.com/global/careers", note: "Специализация только на заболеваниях ЦНС." },
+    website: "https://www.lundbeck.com/",
+    logoColor: "#0369a1",
+    note: ""
+  },
+  {
+    name: "Gilead Sciences",
+    fullName: "Gilead Sciences, Inc. (США)",
+    country: "Зарубеж",
+    status: "Зарубежная · присутствие",
+    hasProductionInRussia: false,
+    regions: ["Москва"],
+    factories: [],
+    employeesRussia: "н/д",
+    employeesGlobal: 18000,
+    revenue: null,
+    revenueYear: 2025,
+    yearEnteredRussia: 2015,
+    segments: ["Оригинальные", "Биотех"],
+    therapeuticAreas: ["ВИЧ", "Гепатиты", "Онкология"],
+    keyProducts: ["Биктарви", "Совальди", "Эпклюза"],
+    hasRnD: false,
+    hr: { roles: ["Медпредставители", "Медицина", "Регистрация"], careerSite: "https://www.gilead.com/careers", note: "Лидер в терапии ВИЧ и вирусных гепатитов." },
+    website: "https://www.gilead.com/",
+    logoColor: "#be123c",
+    note: ""
+  }
+];
+
+</script>
+
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { display:['Manrope','system-ui','sans-serif'], body:['Inter','system-ui','sans-serif'] },
+      colors: { ink:'#0e2a3b', slate2:'#5b7282', mint:'#0fb5ba', teal:'#0e9aa0', sky:'#1d9bf0', paper:'#f4f9fa' },
+      boxShadow: { soft:'0 1px 2px rgba(14,42,59,.05), 0 10px 30px rgba(14,42,59,.07)' },
+    }},
+  };
+</script>
+
+<style>
+  html{scroll-behavior:smooth}
+  body{font-family:'Inter',sans-serif;background:#f4f9fa;color:#0e2a3b}
+  h1,h2,h3,h4{font-family:'Manrope',sans-serif;letter-spacing:-.015em}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:#cfe3e6;border-radius:6px;border:3px solid #f4f9fa}
+  ::-webkit-scrollbar-thumb:hover{background:#b6d6da}
+  .leaflet-container{font-family:'Inter',sans-serif;border-radius:18px}
+  .leaflet-popup-content-wrapper{border-radius:14px;box-shadow:0 8px 30px rgba(14,42,59,.18)}
+  .leaflet-popup-content{margin:14px 16px;font-size:13px;line-height:1.45}
+  .fade-in{animation:fade .4s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .stagger>*{animation:fade .45s cubic-bezier(.2,.7,.3,1) both}
+  .stagger>*:nth-child(1){animation-delay:.02s}.stagger>*:nth-child(2){animation-delay:.05s}
+  .stagger>*:nth-child(3){animation-delay:.08s}.stagger>*:nth-child(4){animation-delay:.11s}
+  .stagger>*:nth-child(5){animation-delay:.14s}.stagger>*:nth-child(6){animation-delay:.17s}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important}html{scroll-behavior:auto}}
+  details>summary{list-style:none;cursor:pointer}
+  details>summary::-webkit-details-marker{display:none}
+  .skeleton{background:linear-gradient(90deg,#eef4f5 25%,#e2eef0 37%,#eef4f5 63%);background-size:400% 100%;animation:sk 1.4s ease infinite}
+  @keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+  [tabindex]:focus-visible,a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #0fb5ba;outline-offset:2px;border-radius:8px}
+  .hairline{background:linear-gradient(90deg,transparent,#d4e6e8,transparent);height:1px}
+  @media print{header,footer,.no-print{display:none!important}body{background:#fff}}
+  mark{background:#cdeff0;color:inherit;padding:0 1px;border-radius:3px}
+  .mesh{background:
+    radial-gradient(60% 70% at 12% 0%, rgba(15,181,186,.16), transparent 60%),
+    radial-gradient(50% 60% at 95% 5%, rgba(29,155,240,.12), transparent 55%),
+    radial-gradient(45% 55% at 70% 100%, rgba(124,58,237,.07), transparent 60%);}
+  .card-hover{transition:transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s}
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="max-width:640px;margin:90px auto;padding:0 24px;font-family:Manrope,system-ui;text-align:center;color:#0e2a3b">
+    <div style="font-size:42px">💊</div>
+    <h1 style="font-size:22px;font-weight:800;margin:10px 0 8px">ФармаНавигатор загружается…</h1>
+    <p style="color:#5b7282;font-size:14px;line-height:1.6">Подгружаются карта и графики. Нужно интернет-соединение. Если за 10–15 сек. ничего не появилось — обновите страницу (F5).</p>
+  </div>
+</div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect, useRef, useCallback } = React;
+const RC = window.Recharts || {};
+const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } = RC;
+
+const DATA = (window.PHARMA_COMPANIES || []).map((c, i) => ({ id: i, ...c }));
+
+/* ============ helpers ============ */
+const fmtRub = (v) => v == null ? "н/д" : v.toLocaleString('ru-RU') + " млрд ₽";
+const fmtNum = (v) => (v === "н/д" || v == null) ? "н/д" : Number(v).toLocaleString('ru-RU');
+const initials = (n) => n.replace(/[«»()]/g,'').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const uniq = (a) => [...new Set(a)];
+const ALL_SEGMENTS = uniq(DATA.flatMap(c => c.segments)).sort();
+const ALL_REGIONS  = uniq(DATA.flatMap(c => c.regions)).sort((a,b)=>a.localeCompare(b,'ru'));
+const ALL_AREAS    = uniq(DATA.flatMap(c => c.therapeuticAreas)).sort((a,b)=>a.localeCompare(b,'ru'));
+const PALETTE = ['#0fb5ba','#1d9bf0','#7c3aed','#f59e0b','#ef4444','#10b981','#6366f1','#ec4899','#14b8a6','#f97316'];
+
+function highlight(text, q) {
+  if (!q) return text;
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return text;
+  return <>{text.slice(0,i)}<mark>{text.slice(i,i+q.length)}</mark>{text.slice(i+q.length)}</>;
+}
+
+/* ============ tiny atoms ============ */
+function Logo({ c, size=44 }) {
+  return <div style={{width:size,height:size,background:c.logoColor||'#0fb5ba',fontSize:size*0.36}}
+    className="rounded-xl flex items-center justify-center text-white font-display font-extrabold shrink-0 select-none">{initials(c.name)}</div>;
+}
+function Tag({ children, tone='mint', onClick }) {
+  const tones = { mint:'bg-mint/10 text-teal', sky:'bg-sky/10 text-sky-700', gray:'bg-slate-100 text-slate2',
+    green:'bg-emerald-50 text-emerald-700', amber:'bg-amber-50 text-amber-700', rose:'bg-rose-50 text-rose-600', ink:'bg-ink text-white' };
+  const Cmp = onClick ? 'button' : 'span';
+  return <Cmp onClick={onClick} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${tones[tone]} ${onClick?'hover:opacity-80 transition':''}`}>{children}</Cmp>;
+}
+function CountryBadge({ country }) {
+  const map = { 'РФ':['green','🇷🇺 Российская'], 'Зарубеж':['sky','🌍 Зарубежная'], 'СП':['amber','🤝 Совместная'] };
+  const [tone,label] = map[country] || ['gray', country];
+  return <Tag tone={tone}>{label}</Tag>;
+}
+function RankBadge({ rank }) {
+  if (!rank) return null;
+  const top3 = rank<=3;
+  return <span title="Позиция в рейтинге Forbes по итогам 2025 г."
+    className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${top3?'bg-amber-100 text-amber-800':'bg-slate-100 text-slate2'}`}>
+    {top3?'★':'#'}{rank} <span className="font-medium opacity-70">Forbes</span></span>;
+}
+function Stat({ value, label, sub, accent }) {
+  return <div className="bg-white rounded-2xl p-4 md:p-5 shadow-soft relative overflow-hidden">
+    {accent && <div className="absolute left-0 top-0 bottom-0 w-1" style={{background:accent}} />}
+    <div className="text-2xl md:text-[28px] font-display font-extrabold leading-tight">{value}</div>
+    <div className="text-sm text-slate2 mt-1">{label}</div>
+    {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
+  </div>;
+}
+function Section({ title, icon, children, action }) {
+  return <div className="bg-white rounded-2xl p-5 md:p-6 shadow-soft">
+    <div className="flex items-center justify-between gap-3 mb-4">
+      <h3 className="font-display font-bold text-lg flex items-center gap-2"><span aria-hidden>{icon}</span>{title}</h3>
+      {action}
+    </div>
+    {children}
+  </div>;
+}
+
+/* ============ routing (hash based) ============ */
+function parseHash() {
+  const h = (location.hash||'#/').replace(/^#/,'');
+  const parts = h.split('/').filter(Boolean);
+  if (parts[0]==='company' && parts[1]!=null) return { view:'company', id:Number(parts[1]) };
+  const known = ['dashboard','catalog','map','compare','analytics','glossary','about'];
+  return { view: known.includes(parts[0])?parts[0]:'dashboard', id:null };
+}
+
+/* ============ NAV ============ */
+const NAV = [['dashboard','Обзор'],['catalog','Каталог'],['map','Карта'],['compare','Сравнение'],['analytics','Аналитика'],['glossary','Словарь'],['about','О проекте']];
+function Nav({ view, query, setQuery, navigate }) {
+  const [open, setOpen] = useState(false);
+  const active = view==='company' ? 'catalog' : view;
+  return (
+    <header className="sticky top-0 z-[1000] bg-white/85 backdrop-blur-md border-b border-slate-100 no-print">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
+        <button onClick={()=>navigate('dashboard')} className="flex items-center gap-2 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-mint to-sky flex items-center justify-center text-white font-display font-extrabold shadow-sm">Ф</div>
+          <span className="font-display font-extrabold text-lg hidden sm:block">ФармаНавигатор</span>
+        </button>
+        <nav className="hidden md:flex items-center gap-0.5 ml-2">
+          {NAV.map(([k,l]) => (
+            <button key={k} onClick={()=>navigate(k)} aria-current={active===k?'page':undefined}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${active===k?'bg-mint/10 text-teal':'text-slate2 hover:text-ink hover:bg-slate-50'}`}>{l}</button>
+          ))}
+        </nav>
+        <div className="flex-1" />
+        <div className="relative hidden sm:block">
+          <input value={query} onChange={e=>{setQuery(e.target.value); if(e.target.value && active!=='catalog') navigate('catalog');}}
+            placeholder="Поиск компании…" aria-label="Поиск компании"
+            className="w-44 lg:w-64 pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-mint/40 focus:border-mint" />
+          <svg className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+        </div>
+        <button onClick={()=>setOpen(!open)} className="md:hidden p-2 rounded-lg hover:bg-slate-50" aria-label="Меню" aria-expanded={open}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d={open?"M6 6l12 12M6 18L18 6":"M4 6h16M4 12h16M4 18h16"}/></svg>
+        </button>
+      </div>
+      {open && (
+        <div className="md:hidden border-t border-slate-100 px-4 py-3 grid grid-cols-2 gap-2 bg-white">
+          {NAV.map(([k,l]) => (
+            <button key={k} onClick={()=>{navigate(k); setOpen(false);}}
+              className={`px-3 py-2 rounded-lg text-sm font-medium text-left ${active===k?'bg-mint/10 text-teal':'text-slate2 hover:bg-slate-50'}`}>{l}</button>
+          ))}
+          <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск…" aria-label="Поиск"
+            className="col-span-2 mt-1 px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+        </div>
+      )}
+    </header>
+  );
+}
+
+/* ============ DASHBOARD ============ */
+function Dashboard({ navigate, setQuery }) {
+  const total = DATA.length;
+  const ru = DATA.filter(c=>c.country==='РФ').length;
+  const foreign = DATA.filter(c=>c.country==='Зарубеж').length;
+  const sp = DATA.filter(c=>c.country==='СП').length;
+  const withProd = DATA.filter(c=>c.hasProductionInRussia).length;
+  const factories = DATA.flatMap(c=>c.factories).length;
+  const regions = ALL_REGIONS.length;
+  const withRnD = DATA.filter(c=>c.hasRnD).length;
+
+  const regionCounts = useMemo(()=>{
+    const r={}; DATA.forEach(c=>c.regions.forEach(reg=>{ r[reg]=(r[reg]||0)+1; }));
+    return Object.entries(r).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value).slice(0,8);
+  },[]);
+  const segCounts = useMemo(()=>{
+    const m={}; DATA.forEach(c=>c.segments.forEach(s=>{ m[s]=(m[s]||0)+1; }));
+    return Object.entries(m).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
+  },[]);
+  const topRevenue = useMemo(()=> DATA.filter(c=>c.revenue!=null).sort((a,b)=>b.revenue-a.revenue).slice(0,5), []);
+
+  return (
+    <div className="fade-in">
+      <section className="relative overflow-hidden mesh">
+        <div className="absolute -right-24 -top-24 w-96 h-96 rounded-full bg-mint/10 blur-3xl" />
+        <div className="relative max-w-7xl mx-auto px-4 pt-12 md:pt-16 pb-10">
+          <Tag tone="mint">● Справочник для рекрутеров фарм-отрасли</Tag>
+          <h1 className="mt-4 text-3xl md:text-5xl font-display font-extrabold leading-[1.08] max-w-3xl">
+            Фарм-отрасль России —<br/><span className="text-teal">за 5 минут понятно, кто есть кто</span>
+          </h1>
+          <p className="mt-4 text-slate2 max-w-2xl text-base md:text-lg">
+            100 крупнейших игроков: масштаб, локации производств, численность персонала, продуктовый портфель.
+            Каталог, карта заводов, сравнение и аналитика — чтобы быстро войти в индустрию.
+          </p>
+          <div className="mt-6 max-w-xl relative">
+            <input onChange={e=>{ setQuery(e.target.value); if(e.target.value) navigate('catalog'); }}
+              placeholder="Найти компанию по названию…" aria-label="Поиск компании"
+              className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-200 bg-white/90 shadow-soft text-base focus:outline-none focus:ring-2 focus:ring-mint/40 focus:border-mint" />
+            <svg className="w-5 h-5 absolute left-4 top-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button onClick={()=>navigate('catalog')} className="px-5 py-3 rounded-xl bg-ink text-white font-medium hover:opacity-90 transition shadow-soft">Открыть каталог →</button>
+            <button onClick={()=>navigate('map')} className="px-5 py-3 rounded-xl bg-white border border-slate-200 font-medium hover:border-mint transition">Карта производств</button>
+            <button onClick={()=>navigate('glossary')} className="px-5 py-3 rounded-xl bg-white border border-slate-200 font-medium hover:border-mint transition">Фарма для новичка 📖</button>
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 mt-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger">
+          <Stat accent="#0fb5ba" value="≈1,89 трлн ₽" label="Розничный фармрынок РФ" sub="2025, RNC Pharma" />
+          <Stat accent="#1d9bf0" value="47,3%" label="Доля отечественных лекарств" sub="в ₽, 2025, AlphaRM" />
+          <Stat accent="#7c3aed" value={total} label="Компаний в справочнике" sub={`${withProd} с заводом в РФ · ${withRnD} с R&D`} />
+          <Stat accent="#f59e0b" value={factories} label="Производственных площадок" sub={`${regions} регионов`} />
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 mt-8 grid lg:grid-cols-2 gap-4">
+        <Section title="Топ-регионы по присутствию" icon="📍">
+          <p className="text-sm text-slate2 -mt-3 mb-3">Сколько компаний представлено в регионе</p>
+          <div style={{height:280}}>
+            <ResponsiveContainer>
+              <BarChart data={regionCounts} layout="vertical" margin={{left:8,right:24}}>
+                <XAxis type="number" hide /><YAxis type="category" dataKey="name" width={150} tick={{fontSize:12,fill:'#5b7282'}} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{fill:'#f1f5f9'}} contentStyle={{borderRadius:12,border:'none',boxShadow:'0 8px 24px rgba(0,0,0,.1)'}} />
+                <Bar dataKey="value" radius={[0,7,7,0]} fill="#0fb5ba" barSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Section>
+        <Section title="Происхождение компаний" icon="🏳️">
+          <p className="text-sm text-slate2 -mt-3 mb-3">Российские · зарубежные · совместные</p>
+          <div style={{height:280}}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={[{name:'Российские',value:ru},{name:'Зарубежные',value:foreign},{name:'Совместные',value:sp}]}
+                  dataKey="value" nameKey="name" innerRadius={64} outerRadius={100} paddingAngle={3} stroke="none">
+                  <Cell fill="#10b981" /><Cell fill="#1d9bf0" /><Cell fill="#f59e0b" />
+                </Pie>
+                <Legend iconType="circle" /><Tooltip contentStyle={{borderRadius:12,border:'none',boxShadow:'0 8px 24px rgba(0,0,0,.1)'}} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Section>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 mt-4 grid lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <Section title="Сегменты рынка" icon="🧬" action={<button onClick={()=>navigate('analytics')} className="text-sm text-teal font-medium hover:underline">Вся аналитика →</button>}>
+            <p className="text-sm text-slate2 -mt-3 mb-3">Компания может относиться к нескольким сегментам</p>
+            <div style={{height:230}}>
+              <ResponsiveContainer>
+                <BarChart data={segCounts} margin={{left:0,right:8,top:8}}>
+                  <XAxis dataKey="name" tick={{fontSize:11,fill:'#5b7282'}} interval={0} axisLine={false} tickLine={false} />
+                  <YAxis hide /><Tooltip cursor={{fill:'#f1f5f9'}} contentStyle={{borderRadius:12,border:'none',boxShadow:'0 8px 24px rgba(0,0,0,.1)'}} />
+                  <Bar dataKey="value" radius={[7,7,0,0]} barSize={38}>
+                    {segCounts.map((e,i)=><Cell key={i} fill={PALETTE[i%PALETTE.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+              {segCounts.map((s,i)=>(
+                <button key={s.name} onClick={()=>navigate('catalog')} className="flex items-center gap-1.5 text-xs text-slate2 hover:text-ink">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{background:PALETTE[i%PALETTE.length]}} />{s.name}<span className="font-semibold text-ink">{s.value}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
+        </div>
+        <Section title="Топ по выручке в РФ" icon="🏆" action={<button onClick={()=>navigate('analytics')} className="text-sm text-teal font-medium hover:underline">Все →</button>}>
+          <ol className="space-y-2">
+            {topRevenue.map((c,i)=>(
+              <li key={c.id}>
+                <button onClick={()=>navigate('company',c.id)} className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition text-left">
+                  <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${i<3?'bg-amber-100 text-amber-800':'bg-slate-100 text-slate2'}`}>{i+1}</span>
+                  <Logo c={c} size={30} />
+                  <span className="flex-1 min-w-0 truncate text-sm font-medium">{c.name}</span>
+                  <span className="text-sm font-bold text-ink">{c.revenue}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <div className="text-xs text-slate-400 mt-2 px-2">млрд ₽ · 2025</div>
+        </Section>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 mt-8 mb-12">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 stagger">
+          {[
+            ['catalog','Каталог компаний','Карточки, фильтры, поиск, экспорт','#0fb5ba','▦'],
+            ['map','Карта производств','Все заводы на карте России','#1d9bf0','◉'],
+            ['compare','Сравнить компании','2–4 компании в таблице','#7c3aed','⇄'],
+            ['glossary','Словарь терминов','GMP, дженерик, ЖНВЛП…','#f59e0b','📖'],
+          ].map(([k,t,d,col,ic])=>(
+            <button key={k} onClick={()=>navigate(k)} className="text-left bg-white rounded-2xl p-5 shadow-soft card-hover hover:-translate-y-1 hover:shadow-lg group">
+              <div className="w-10 h-10 rounded-xl mb-3 flex items-center justify-center text-white text-lg font-bold group-hover:scale-110 transition" style={{background:col}}>{ic}</div>
+              <div className="font-display font-bold">{t}</div>
+              <div className="text-sm text-slate2 mt-0.5">{d}</div>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* ============ CATALOG ============ */
+function CompanyCard({ c, onOpen, query }) {
+  return (
+    <button onClick={()=>onOpen(c.id)} className="text-left bg-white rounded-2xl p-5 shadow-soft card-hover hover:-translate-y-1 hover:shadow-lg w-full group">
+      <div className="flex items-start gap-3">
+        <Logo c={c} />
+        <div className="min-w-0 flex-1">
+          <div className="font-display font-bold text-ink truncate group-hover:text-teal transition">{highlight(c.name, query)}</div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5 items-center">
+            <CountryBadge country={c.country} />
+            {c.marketRank && <RankBadge rank={c.marketRank} />}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <div><div className="text-slate-400 text-xs">Выручка в РФ</div><div className="font-semibold">{fmtRub(c.revenue)}</div></div>
+        <div><div className="text-slate-400 text-xs">Сотрудники РФ</div><div className="font-semibold">{fmtNum(c.employeesRussia)}</div></div>
+      </div>
+      <div className="mt-3 text-xs text-slate2 truncate">📍 {c.regions.slice(0,3).join(' · ') || 'н/д'}{c.regions.length>3?` +${c.regions.length-3}`:''}</div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {c.hasProductionInRussia && <Tag tone="green">Завод в РФ</Tag>}
+        {c.hasRnD && <Tag tone="sky">R&D в РФ</Tag>}
+        {c.segments.slice(0,2).map(s=><Tag key={s} tone="gray">{s}</Tag>)}
+        {c.segments.length>2 && <Tag tone="gray">+{c.segments.length-2}</Tag>}
+      </div>
+    </button>
+  );
+}
+
+function Catalog({ navigate, query, setQuery, filters, setFilters }) {
+  const { country, prodOnly, rndOnly, region, segment, area, sort } = filters;
+  const set = (k,v)=> setFilters({...filters,[k]:v});
+
+  const filtered = useMemo(()=>{
+    let list = DATA.filter(c=>{
+      if (query && !c.name.toLowerCase().includes(query.toLowerCase()) && !c.fullName.toLowerCase().includes(query.toLowerCase())) return false;
+      if (country!=='all' && c.country!==country) return false;
+      if (prodOnly && !c.hasProductionInRussia) return false;
+      if (rndOnly && !c.hasRnD) return false;
+      if (region!=='all' && !c.regions.includes(region)) return false;
+      if (segment!=='all' && !c.segments.includes(segment)) return false;
+      if (area!=='all' && !c.therapeuticAreas.includes(area)) return false;
+      return true;
+    });
+    const num = v => (typeof v==='number'?v:0);
+    list.sort((a,b)=>{
+      if (sort==='revenue') return (b.revenue??-1)-(a.revenue??-1);
+      if (sort==='employees') return num(b.employeesRussia)-num(a.employeesRussia);
+      if (sort==='factories') return b.factories.length-a.factories.length;
+      if (sort==='rank') return (a.marketRank??999)-(b.marketRank??999);
+      if (sort==='name') return a.name.localeCompare(b.name,'ru');
+      return 0;
+    });
+    return list;
+  },[query,country,prodOnly,rndOnly,region,segment,area,sort]);
+
+  const activeChips = [];
+  if (country!=='all') activeChips.push(['Происхождение: '+country, ()=>set('country','all')]);
+  if (region!=='all') activeChips.push(['Регион: '+region, ()=>set('region','all')]);
+  if (segment!=='all') activeChips.push(['Сегмент: '+segment, ()=>set('segment','all')]);
+  if (area!=='all') activeChips.push(['Область: '+area, ()=>set('area','all')]);
+  if (prodOnly) activeChips.push(['Только с заводом в РФ', ()=>set('prodOnly',false)]);
+  if (rndOnly) activeChips.push(['Только с R&D в РФ', ()=>set('rndOnly',false)]);
+  if (query) activeChips.push(['Поиск: "'+query+'"', ()=>setQuery('')]);
+
+  const reset = ()=>{ setFilters({country:'all',prodOnly:false,rndOnly:false,region:'all',segment:'all',area:'all',sort}); setQuery(''); };
+
+  const exportCSV = ()=>{
+    const head = ['Название','Полное название','Происхождение','Заводов в РФ','Регионы','Выручка РФ (млрд ₽)','Сотрудники РФ','Сегменты','Терапевт. области','R&D в РФ','Сайт'];
+    const rows = filtered.map(c=>[c.name,c.fullName,c.country,c.factories.length,c.regions.join('; '),c.revenue??'',c.employeesRussia,c.segments.join('; '),c.therapeuticAreas.join('; '),c.hasRnD?'Да':'Нет',c.website||'']
+      .map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+    const csv = '﻿'+[head.join(','),...rows].join('\n');
+    const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    const a = document.createElement('a'); a.href=url; a.download='pharma-companies.csv'; a.click(); URL.revokeObjectURL(url);
+  };
+
+  const Sel = ({value,onChange,children,label}) => (
+    <label className="block">
+      <span className="text-xs text-slate-400">{label}</span>
+      <select value={value} onChange={e=>onChange(e.target.value)}
+        className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-mint/40">{children}</select>
+    </label>
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 fade-in">
+      <div className="flex items-end justify-between gap-3 flex-wrap mb-5">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-display font-extrabold">Каталог компаний</h1>
+          <p className="text-slate2 text-sm mt-1">{filtered.length} из {DATA.length} компаний</p>
+        </div>
+        <div className="flex gap-2 items-end">
+          <button onClick={exportCSV} className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium hover:border-mint flex items-center gap-1.5" title="Скачать отфильтрованный список в CSV">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>CSV
+          </button>
+          <Sel value={sort} onChange={v=>set('sort',v)} label="Сортировка">
+            <option value="revenue">По выручке</option>
+            <option value="rank">По рейтингу Forbes</option>
+            <option value="employees">По сотрудникам</option>
+            <option value="factories">По числу заводов</option>
+            <option value="name">По названию</option>
+          </Sel>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4 bg-white p-4 rounded-2xl shadow-soft">
+        <Sel value={country} onChange={v=>set('country',v)} label="Происхождение">
+          <option value="all">Все</option><option value="РФ">Российские</option><option value="Зарубеж">Зарубежные</option><option value="СП">Совместные</option>
+        </Sel>
+        <Sel value={region} onChange={v=>set('region',v)} label="Регион">
+          <option value="all">Все регионы</option>{ALL_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
+        </Sel>
+        <Sel value={segment} onChange={v=>set('segment',v)} label="Сегмент">
+          <option value="all">Все сегменты</option>{ALL_SEGMENTS.map(s=><option key={s} value={s}>{s}</option>)}
+        </Sel>
+        <Sel value={area} onChange={v=>set('area',v)} label="Терапевт. область">
+          <option value="all">Все области</option>{ALL_AREAS.map(a=><option key={a} value={a}>{a}</option>)}
+        </Sel>
+        <div className="flex flex-col justify-end gap-1.5 pb-1">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={prodOnly} onChange={e=>set('prodOnly',e.target.checked)} className="w-4 h-4 accent-mint" />
+            <span className="text-sm">Завод в РФ</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={rndOnly} onChange={e=>set('rndOnly',e.target.checked)} className="w-4 h-4 accent-mint" />
+            <span className="text-sm">R&D в РФ</span>
+          </label>
+        </div>
+      </div>
+
+      {activeChips.length>0 && (
+        <div className="flex flex-wrap gap-2 mb-5 items-center">
+          {activeChips.map(([label,clear],i)=>(
+            <button key={i} onClick={clear} className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-mint/10 text-teal hover:bg-mint/20 transition">
+              {label}<span className="text-base leading-none">×</span>
+            </button>
+          ))}
+          <button onClick={reset} className="text-xs text-slate-400 hover:text-ink underline ml-1">сбросить всё</button>
+        </div>
+      )}
+
+      {filtered.length===0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center shadow-soft">
+          <div className="text-4xl mb-2">🔍</div>
+          <p className="text-slate2 font-medium">Ничего не нашлось</p>
+          <p className="text-sm text-slate-400 mt-1">Попробуйте смягчить фильтры или изменить запрос.</p>
+          <button onClick={reset} className="mt-4 px-4 py-2 rounded-xl bg-mint/10 text-teal font-medium">Сбросить всё</button>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+          {filtered.map(c=><CompanyCard key={c.id} c={c} onOpen={(id)=>navigate('company',id)} query={query} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============ MINI MAP ============ */
+function MiniMap({ factories }) {
+  const ref = useRef(null);
+  useEffect(()=>{
+    if(!ref.current || !factories.length || !window.L) return;
+    const map = L.map(ref.current, { scrollWheelZoom:false, zoomControl:true });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(map);
+    const ms = factories.map(f=>{
+      const m = L.marker([f.lat,f.lng]).addTo(map);
+      m.bindPopup(`<b>${f.city}</b><br/>${f.products}<br/>GMP: ${f.gmp}`);
+      return m;
+    });
+    map.fitBounds(L.featureGroup(ms).getBounds().pad(0.4), { maxZoom:6 });
+    return ()=>map.remove();
+  },[factories]);
+  if(!factories.length) return <div className="text-sm text-slate-400 py-6 text-center bg-slate-50 rounded-xl">Координаты заводов не указаны (нет локального производства).</div>;
+  return <div ref={ref} style={{height:300}} className="rounded-2xl overflow-hidden border border-slate-100 z-0" />;
+}
+
+/* ============ COMPANY PAGE ============ */
+function Field({ label, value }) {
+  return <div><div className="text-xs text-slate-400">{label}</div><div className="font-semibold mt-0.5">{value}</div></div>;
+}
+function CompanyPage({ c, navigate }) {
+  const idx = DATA.findIndex(x=>x.id===c.id);
+  const prev = DATA[(idx-1+DATA.length)%DATA.length], next = DATA[(idx+1)%DATA.length];
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-8 fade-in">
+      <div className="flex items-center justify-between mb-4 no-print">
+        <button onClick={()=>navigate('catalog')} className="text-sm text-slate2 hover:text-ink flex items-center gap-1">← К каталогу</button>
+        <div className="flex items-center gap-1">
+          <button onClick={()=>window.print()} className="px-3 py-1.5 rounded-lg text-sm text-slate2 hover:bg-white" title="Печать / PDF">🖨 Печать</button>
+          <button onClick={()=>navigate('company',prev.id)} className="px-3 py-1.5 rounded-lg text-sm text-slate2 hover:bg-white" title={prev.name}>← Пред.</button>
+          <button onClick={()=>navigate('company',next.id)} className="px-3 py-1.5 rounded-lg text-sm text-slate2 hover:bg-white" title={next.name}>След. →</button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-soft relative overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-1.5" style={{background:c.logoColor||'#0fb5ba'}} />
+        <div className="flex items-start gap-4 flex-wrap">
+          <Logo c={c} size={64} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl md:text-3xl font-display font-extrabold">{c.name}</h1>
+              {c.marketRank && <RankBadge rank={c.marketRank} />}
+            </div>
+            <p className="text-slate2 mt-0.5">{c.fullName}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <CountryBadge country={c.country} />
+              <Tag tone="gray">{c.status}</Tag>
+              {c.hasProductionInRussia && <Tag tone="green">Производство в РФ</Tag>}
+              {c.hasRnD && <Tag tone="sky">R&D в РФ</Tag>}
+            </div>
+          </div>
+          {c.website && <a href={c.website} target="_blank" rel="noopener" className="px-4 py-2 rounded-xl bg-ink text-white text-sm font-medium hover:opacity-90 no-print">Сайт ↗</a>}
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 stagger">
+        <Stat accent="#0fb5ba" value={fmtRub(c.revenue)} label={`Выручка в РФ (${c.revenueYear})`} />
+        <Stat accent="#1d9bf0" value={fmtNum(c.employeesRussia)} label="Сотрудники в РФ" />
+        <Stat accent="#7c3aed" value={fmtNum(c.employeesGlobal)} label="Сотрудники глобально" />
+        <Stat accent="#f59e0b" value={c.yearEnteredRussia} label="На рынке РФ с" />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4 mt-4">
+        <div className="md:col-span-2">
+          <Section title="Производство в России" icon="🏭"
+            action={<span className="text-sm text-slate2">{c.factories.length} {c.factories.length===1?'площадка':'площадок'}</span>}>
+            <MiniMap factories={c.factories} />
+            <div className="mt-4 grid sm:grid-cols-2 gap-3">
+              {c.factories.length ? c.factories.map((f,i)=>(
+                <div key={i} className="border border-slate-100 rounded-xl p-4 hover:border-mint/40 transition">
+                  <div className="font-semibold flex items-center justify-between gap-2">
+                    <span>📍 {f.city}</span><Tag tone={f.gmp==='Да'?'green':'gray'}>GMP: {f.gmp}</Tag>
+                  </div>
+                  <div className="text-sm text-slate2 mt-1">{f.products}</div>
+                </div>
+              )) : <div className="text-sm text-slate-400">Собственные площадки в РФ не указаны — коммерческое присутствие / импорт.</div>}
+            </div>
+          </Section>
+        </div>
+
+        <Section title="Продуктовый портфель" icon="💊">
+          <div className="text-xs text-slate-400 mb-1">Терапевтические области</div>
+          <div className="flex flex-wrap gap-1.5 mb-4">{c.therapeuticAreas.map(a=><Tag key={a} tone="mint">{a}</Tag>)}</div>
+          <div className="text-xs text-slate-400 mb-1">Ключевые препараты</div>
+          <ul className="text-sm space-y-1">{c.keyProducts.map((p,i)=><li key={i} className="flex gap-2"><span className="text-mint">•</span>{p}</li>)}</ul>
+        </Section>
+
+        <Section title="Для рекрутера" icon="🧑‍💼">
+          <Field label="Типичные функции / вакансии" value={
+            <div className="flex flex-wrap gap-1.5 mt-1">{(c.hr?.roles||[]).map(r=><Tag key={r} tone="sky">{r}</Tag>)}</div>} />
+          <div className="mt-3"><Field label="R&D в России" value={c.hasRnD?'Да':'Нет / не подтверждено'} /></div>
+          {c.hr?.note && <p className="text-sm text-slate2 mt-3">{c.hr.note}</p>}
+          {c.hr?.careerSite && <a href={c.hr.careerSite} target="_blank" rel="noopener" className="inline-block mt-3 px-4 py-2 rounded-xl bg-mint/10 text-teal text-sm font-medium no-print">Карьерный сайт ↗</a>}
+        </Section>
+
+        <Section title="Профиль и сегменты" icon="🧬">
+          <div className="text-xs text-slate-400 mb-1">Сегменты</div>
+          <div className="flex flex-wrap gap-1.5 mb-4">{c.segments.map(s=><Tag key={s} tone="gray">{s}</Tag>)}</div>
+          <div className="text-xs text-slate-400 mb-1">Регионы присутствия</div>
+          <div className="flex flex-wrap gap-1.5">{c.regions.map(r=><Tag key={r} tone="amber">{r}</Tag>)}</div>
+        </Section>
+
+        {c.note && <div className="md:col-span-2"><Section title="Ключевые события" icon="📰"><p className="text-sm text-slate2">{c.note}</p></Section></div>}
+      </div>
+    </div>
+  );
+}
+
+/* ============ FULL MAP ============ */
+function FullMap({ navigate }) {
+  const ref = useRef(null), mapRef = useRef(null), layerRef = useRef(null);
+  const [seg, setSeg] = useState('all');
+  const [ready, setReady] = useState(false);
+
+  const points = useMemo(()=>{
+    const pts=[];
+    DATA.forEach(c=>{ if (seg!=='all' && !c.segments.includes(seg)) return; c.factories.forEach(f=>pts.push({...f, company:c})); });
+    return pts;
+  },[seg]);
+
+  useEffect(()=>{
+    if(!ref.current || !window.L) return;
+    if(!mapRef.current){
+      mapRef.current = L.map(ref.current,{zoomControl:true}).setView([58,75],3.2);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(mapRef.current);
+      mapRef.current.whenReady(()=>setReady(true));
+    }
+    const map = mapRef.current;
+    if(layerRef.current) layerRef.current.remove();
+    layerRef.current = L.layerGroup().addTo(map);
+    points.forEach(p=>{
+      const m = L.circleMarker([p.lat,p.lng],{radius:8,fillColor:p.company.logoColor||'#0fb5ba',color:'#fff',weight:2,fillOpacity:.92});
+      m.addTo(layerRef.current);
+      const slug = `${p.company.id}-${p.city.replace(/\W/g,'')}`;
+      m.bindPopup(`<b>${p.company.name}</b><br/>📍 ${p.city}<br/>${p.products}<br/>GMP: ${p.gmp}<br/><a href="#" id="lnk-${slug}" style="color:#0e9aa0;font-weight:600">Открыть карточку →</a>`);
+      m.on('popupopen',()=>{ const el=document.getElementById(`lnk-${slug}`); if(el) el.onclick=(e)=>{e.preventDefault(); navigate('company',p.company.id);}; });
+    });
+  },[points,navigate]);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 fade-in">
+      <div className="flex items-end justify-between gap-3 flex-wrap mb-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-display font-extrabold">Карта производств</h1>
+          <p className="text-slate2 text-sm mt-1">{points.length} площадок · клик по метке → карточка компании</p>
+        </div>
+        <label className="block">
+          <span className="text-xs text-slate-400">Фильтр по сегменту</span>
+          <select value={seg} onChange={e=>setSeg(e.target.value)} className="mt-1 block px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
+            <option value="all">Все сегменты</option>{ALL_SEGMENTS.map(s=><option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="relative">
+        {!ready && <div className="absolute inset-0 skeleton rounded-2xl z-10 flex items-center justify-center text-slate2 text-sm">Загрузка карты…</div>}
+        <div ref={ref} style={{height:'70vh',minHeight:420}} className="rounded-2xl shadow-soft z-0" />
+      </div>
+    </div>
+  );
+}
+
+/* ============ COMPARE ============ */
+function Compare({ navigate, picked, setPicked }) {
+  const toggle = (id)=> setPicked(picked.includes(id) ? picked.filter(x=>x!==id) : (picked.length<4 ? [...picked,id] : picked));
+  const cols = picked.map(id=>DATA.find(c=>c.id===id)).filter(Boolean);
+  const best = (vals, fn) => { const nums = vals.map(fn).filter(v=>typeof v==='number'); return nums.length?Math.max(...nums):null; };
+  const rows = [
+    ['Происхождение', c=>c.country, false],
+    ['Статус', c=>c.status, false],
+    ['Выручка в РФ, млрд ₽', c=>c.revenue, true],
+    ['Сотрудники в РФ', c=>typeof c.employeesRussia==='number'?c.employeesRussia:c.employeesRussia, true],
+    ['Сотрудники глобально', c=>typeof c.employeesGlobal==='number'?c.employeesGlobal:c.employeesGlobal, true],
+    ['На рынке РФ с', c=>c.yearEnteredRussia, false],
+    ['Заводов в РФ', c=>c.factories.length, true],
+    ['Регионы', c=>c.regions.join(', ')||'н/д', false],
+    ['Сегменты', c=>c.segments.join(', '), false],
+    ['Терапевт. области', c=>c.therapeuticAreas.join(', '), false],
+    ['R&D в РФ', c=>c.hasRnD?'Да':'Нет', false],
+  ];
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 fade-in">
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">Сравнение компаний</h1>
+      <p className="text-slate2 text-sm mt-1">Выберите от 2 до 4 компаний · лучшее значение в строке подсвечивается</p>
+
+      <div className="mt-5 flex flex-wrap gap-2 max-h-44 overflow-y-auto p-1">
+        {DATA.map(c=>{
+          const on = picked.includes(c.id), disabled = picked.length>=4&&!on;
+          return <button key={c.id} onClick={()=>toggle(c.id)} disabled={disabled}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${on?'bg-ink text-white border-ink':'bg-white border-slate-200 hover:border-mint'} ${disabled?'opacity-40 cursor-not-allowed':''}`}>
+            {on&&'✓ '}{c.name}</button>;
+        })}
+      </div>
+
+      {cols.length>=2 ? (
+        <div className="mt-6 overflow-x-auto bg-white rounded-2xl shadow-soft">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left p-4 text-slate-400 font-medium w-48 sticky left-0 bg-white">Параметр</th>
+                {cols.map(c=>(
+                  <th key={c.id} className="text-left p-4">
+                    <button onClick={()=>navigate('company',c.id)} className="flex items-center gap-2 hover:text-teal">
+                      <Logo c={c} size={32} /><span className="font-display font-bold">{c.name}</span>
+                    </button>
+                    <button onClick={()=>toggle(c.id)} className="text-xs text-slate-400 hover:text-rose-500 mt-1">убрать ×</button>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(([label,fn,isNum],i)=>{
+                const top = isNum ? best(cols,fn) : null;
+                return (
+                  <tr key={i} className={i%2?'bg-slate-50/50':''}>
+                    <td className="p-4 text-slate-400 align-top sticky left-0 bg-inherit">{label}</td>
+                    {cols.map(c=>{
+                      const v = fn(c);
+                      const isBest = isNum && top!=null && v===top && cols.filter(x=>fn(x)===top).length<cols.length;
+                      const display = isNum && typeof v==='number' ? v.toLocaleString('ru-RU') : (v==='н/д'||v==null?'н/д':v);
+                      return <td key={c.id} className="p-4 align-top">
+                        <span className={isBest?'font-bold text-teal':''}>{display}{isBest&&' ★'}</span>
+                      </td>;
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="mt-6 bg-white rounded-2xl p-12 text-center shadow-soft text-slate2">
+          <div className="text-4xl mb-2">⇄</div>
+          Отметьте минимум 2 компании выше, чтобы увидеть таблицу сравнения.
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============ ANALYTICS ============ */
+function Analytics({ navigate }) {
+  const byRevenue = DATA.filter(c=>c.revenue!=null).sort((a,b)=>b.revenue-a.revenue).slice(0,12).map(c=>({name:c.name,value:c.revenue,id:c.id}));
+  const byFactories = DATA.map(c=>({name:c.name,value:c.factories.length,id:c.id})).filter(c=>c.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
+  const byEmployees = DATA.filter(c=>typeof c.employeesRussia==='number').sort((a,b)=>b.employeesRussia-a.employeesRussia).slice(0,8).map(c=>({name:c.name,value:c.employeesRussia,id:c.id}));
+  const segData = (()=>{ const m={}; DATA.forEach(c=>c.segments.forEach(s=>m[s]=(m[s]||0)+1)); return Object.entries(m).map(([name,value])=>({name,value})); })();
+  const areaData = (()=>{ const m={}; DATA.forEach(c=>c.therapeuticAreas.forEach(s=>m[s]=(m[s]||0)+1)); return Object.entries(m).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value).slice(0,10); })();
+
+  const Chart = ({title,sub,data,horizontal,onClick}) => (
+    <Section title={title} icon="📊">
+      <p className="text-sm text-slate2 -mt-3 mb-3">{sub}</p>
+      <div style={{height: horizontal? Math.max(220,data.length*36):260}}>
+        <ResponsiveContainer>
+          <BarChart data={data} layout={horizontal?'vertical':'horizontal'} margin={{left:horizontal?8:0,right:24,top:5}}
+            onClick={(st)=>{ if(onClick && st && st.activePayload) onClick(st.activePayload[0].payload); }}>
+            {horizontal ? <><XAxis type="number" hide /><YAxis type="category" dataKey="name" width={145} tick={{fontSize:11,fill:'#5b7282'}} axisLine={false} tickLine={false} /></>
+                        : <><XAxis dataKey="name" tick={{fontSize:10,fill:'#5b7282'}} interval={0} angle={-25} textAnchor="end" height={70} axisLine={false} tickLine={false} /><YAxis hide /></>}
+            <Tooltip cursor={{fill:'#f1f5f9'}} contentStyle={{borderRadius:12,border:'none',boxShadow:'0 8px 24px rgba(0,0,0,.1)'}} />
+            <Bar dataKey="value" radius={horizontal?[0,7,7,0]:[7,7,0,0]} barSize={horizontal?22:38} cursor={onClick?'pointer':'default'}>
+              {data.map((e,i)=><Cell key={i} fill={PALETTE[i%PALETTE.length]} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      {onClick && <p className="text-xs text-slate-400 mt-2">Клик по столбцу → карточка компании</p>}
+    </Section>
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 fade-in">
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">Аналитика и рейтинги</h1>
+      <p className="text-slate2 text-sm mt-1">По данным справочника. Где выручка не раскрыта — компания не попадает в денежные рейтинги.</p>
+
+      <div className="grid lg:grid-cols-2 gap-4 mt-6">
+        <Chart title="Топ по выручке в РФ" sub="млрд ₽, 2025" data={byRevenue} horizontal onClick={(p)=>navigate('company',p.id)} />
+        <Chart title="Топ по числу заводов в РФ" sub="производственных площадок" data={byFactories} horizontal onClick={(p)=>navigate('company',p.id)} />
+      </div>
+      <div className="grid lg:grid-cols-2 gap-4 mt-4">
+        <Chart title="Сотрудники в РФ (где раскрыто)" sub="человек" data={byEmployees} horizontal onClick={(p)=>navigate('company',p.id)} />
+        <Section title="Сегменты рынка" icon="🧬">
+          <p className="text-sm text-slate2 -mt-3 mb-3">Число компаний в каждом сегменте</p>
+          <div style={{height:280}}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={segData} dataKey="value" nameKey="name" outerRadius={100} stroke="none" label={({name,value})=>`${name}: ${value}`} labelLine={false} fontSize={11}>
+                  {segData.map((e,i)=><Cell key={i} fill={PALETTE[i%PALETTE.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{borderRadius:12,border:'none',boxShadow:'0 8px 24px rgba(0,0,0,.1)'}} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Section>
+      </div>
+      <div className="mt-4">
+        <Chart title="Топ терапевтических областей" sub="по числу присутствующих компаний" data={areaData} horizontal />
+      </div>
+    </div>
+  );
+}
+
+/* ============ GLOSSARY ============ */
+const GLOSSARY = [
+  ['GMP','Good Manufacturing Practice — надлежащая производственная практика. Международный стандарт качества и безопасности производства лекарств. Сертификат GMP — обязательное условие для легального выпуска препаратов.'],
+  ['Дженерик','Воспроизведённый аналог оригинального препарата с тем же действующим веществом, выпускаемый после истечения патента. Дешевле оригинала, биоэквивалентен ему.'],
+  ['Оригинальный препарат','Лекарство, впервые разработанное и выведенное на рынок компанией-разработчиком; защищено патентом. Требует полного цикла клинических исследований.'],
+  ['Биоаналог (биосимиляр)','Аналог биологического (например, белкового) препарата. В отличие от химического дженерика, не идентичен, а «подобен» оригиналу из-за сложности биопроизводства.'],
+  ['R&D','Research & Development — исследования и разработки. Подразделения, создающие новые молекулы и препараты. Наличие R&D в РФ — признак компании полного цикла.'],
+  ['Локализация','Перенос производства (полностью или частично — упаковка, готовая форма) на территорию России. Даёт доступ к госзакупкам и преференции по ЖНВЛП.'],
+  ['Регистрационное удостоверение (РУ)','Документ Минздрава, разрешающий обращение конкретного препарата в РФ. Число РУ в портфеле — показатель широты ассортимента компании.'],
+  ['ЖНВЛП','Жизненно необходимые и важнейшие лекарственные препараты — перечень, цены на который регулируются государством. Попадание в ЖНВЛП важно для госзакупок.'],
+  ['АФИ / субстанция','Активный фармацевтический ингредиент — действующее вещество препарата. «Полный цикл» означает выпуск от субстанции до готовой формы.'],
+  ['Готовая лекарственная форма (ГЛФ)','Финальный вид препарата для пациента: таблетка, ампула, капсула. «Локализация по ГЛФ» — финальные стадии производства в РФ.'],
+  ['Биотех','Производство лекарств биологическими методами (живые клетки, белки, моноклональные антитела). Технологически сложнее химического синтеза.'],
+  ['Моноклональные антитела','Биотехнологические белковые молекулы, прицельно связывающие мишень (например, опухолевые клетки). Основа современной онкологии и иммунологии.'],
+  ['Офсетный контракт','Соглашение между компанией и регионом: инвестиции в завод в обмен на гарантированный долгосрочный госзаказ.'],
+  ['OTC / безрецептурные','Over-the-counter — препараты, отпускаемые без рецепта (от простуды, витамины, анальгетики). Продаются напрямую потребителю.'],
+  ['Rx / рецептурные','Препараты, отпускаемые только по рецепту врача. Продвигаются через медицинских представителей, а не прямую рекламу.'],
+  ['Пайплайн','Портфель препаратов компании на разных стадиях разработки и регистрации — показатель будущего роста.'],
+  ['Клинические исследования (КИ)','Этапы проверки эффективности и безопасности препарата на людях (фазы I–III) перед регистрацией. Ключевая функция для R&D-компаний.'],
+  ['Медицинский представитель','Сотрудник, информирующий врачей и аптеки о препаратах компании. Самая массовая «полевая» вакансия в фарме.'],
+  ['Фармаконадзор','Система мониторинга безопасности лекарств после выхода на рынок (сбор данных о побочных эффектах). Обязательна для каждого производителя.'],
+  ['ЕАЭС','Единый рынок лекарств Евразийского экономического союза. Регистрация по правилам ЕАЭС открывает доступ сразу в несколько стран.'],
+];
+function Glossary() {
+  const [q,setQ]=useState('');
+  const list = GLOSSARY.filter(([t,d])=>(t+d).toLowerCase().includes(q.toLowerCase()));
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-8 fade-in">
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">Словарь терминов</h1>
+      <p className="text-slate2 text-sm mt-1">«Фарма для новичка» — базовые понятия для входа в отрасль</p>
+      <div className="relative mt-4">
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Найти термин…"
+          className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-mint/40" />
+        <svg className="w-5 h-5 absolute left-3 top-3.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+      </div>
+      <div className="mt-5 space-y-2">
+        {list.map(([t,d])=>(
+          <details key={t} className="bg-white rounded-2xl shadow-soft p-5 group" open={!!q}>
+            <summary className="font-display font-bold flex items-center justify-between">{t}<span className="text-mint text-xl group-open:rotate-45 transition">+</span></summary>
+            <p className="text-sm text-slate2 mt-3 leading-relaxed">{d}</p>
+          </details>
+        ))}
+        {list.length===0 && <p className="text-slate-400 text-center py-8">Термин не найден.</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ============ ABOUT ============ */
+function About() {
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-8 fade-in">
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">О проекте</h1>
+      <div className="mt-5 space-y-4 text-slate2 leading-relaxed">
+        <div className="bg-white rounded-2xl p-6 shadow-soft">
+          <h3 className="font-display font-bold text-ink mb-2">Назначение</h3>
+          <p>Справочник-навигатор по 100 крупнейшим фармацевтическим компаниям с производством или присутствием в России. Инструмент быстрого входа в отрасль для рекрутеров: масштаб игроков, локации заводов, численность, продуктовый портфель.</p>
+        </div>
+        <div className="bg-white rounded-2xl p-6 shadow-soft">
+          <h3 className="font-display font-bold text-ink mb-2">Методология и данные</h3>
+          <p>Финансовые показатели (выручка, рейтинг) приведены по Forbes «20 лучших фармпроизводителей России» и данным AlphaRM / RNC Pharma по итогам 2025 года. Сведения о заводах, регионах и портфеле собраны из публичных корпоративных и отраслевых источников.</p>
+          <p className="mt-2"><b>Важно:</b> где компания не раскрывает данные публично (численность, выручка локализованных подразделений зарубежных компаний), стоит пометка «н/д» вместо оценочных цифр. Координаты заводов приблизительны (уровень города).</p>
+        </div>
+        <div className="bg-white rounded-2xl p-6 shadow-soft">
+          <h3 className="font-display font-bold text-ink mb-2">Как дополнять справочник</h3>
+          <p>Все данные о компаниях — в одном файле <code className="bg-slate-100 px-1.5 py-0.5 rounded text-sm">companies-data.js</code>. Чтобы добавить компанию, скопируйте любой блок, вставьте в конец списка и замените значения. Поле <code className="bg-slate-100 px-1.5 py-0.5 rounded text-sm">marketRank</code> (позиция в рейтинге) — необязательное. Код сайта менять не нужно: фильтры, карта, аналитика, сравнение и экспорт обновятся автоматически.</p>
+        </div>
+        <p className="text-sm text-slate-400">Данные приведены в иллюстративных целях и требуют проверки перед профессиональным использованием. Сборка: июнь 2026.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ============ ROOT ============ */
+function App() {
+  const [route, setRoute] = useState(parseHash());
+  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState({country:'all',prodOnly:false,rndOnly:false,region:'all',segment:'all',area:'all',sort:'revenue'});
+  const [picked, setPicked] = useState([]);
+
+  useEffect(()=>{
+    const onHash = ()=>{ setRoute(parseHash()); window.scrollTo(0,0); };
+    window.addEventListener('hashchange', onHash);
+    return ()=>window.removeEventListener('hashchange', onHash);
+  },[]);
+
+  const navigate = useCallback((view, id)=>{
+    location.hash = view==='company' && id!=null ? `#/company/${id}` : `#/${view}`;
+  },[]);
+
+  const { view, id } = route;
+  const company = view==='company' ? DATA.find(c=>c.id===id) : null;
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Nav view={view} query={query} setQuery={setQuery} navigate={navigate} />
+      <main className="flex-1">
+        {view==='dashboard' && <Dashboard navigate={navigate} setQuery={setQuery} />}
+        {view==='catalog' && <Catalog navigate={navigate} query={query} setQuery={setQuery} filters={filters} setFilters={setFilters} />}
+        {view==='map' && <FullMap navigate={navigate} />}
+        {view==='compare' && <Compare navigate={navigate} picked={picked} setPicked={setPicked} />}
+        {view==='analytics' && <Analytics navigate={navigate} />}
+        {view==='glossary' && <Glossary />}
+        {view==='about' && <About />}
+        {view==='company' && (company ? <CompanyPage c={company} navigate={navigate} /> :
+          <div className="max-w-3xl mx-auto px-4 py-20 text-center text-slate2">Компания не найдена. <button onClick={()=>navigate('catalog')} className="text-teal underline">К каталогу</button></div>)}
+      </main>
+      <footer className="border-t border-slate-100 mt-12 py-8 no-print">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-mint to-sky flex items-center justify-center text-white font-display font-extrabold text-sm">Ф</div>
+            <span className="text-sm text-slate2"><b className="text-ink font-display">ФармаНавигатор</b> · справочник по фарм-отрасли России</span>
+          </div>
+          <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate2">
+            {NAV.map(([k,l])=><button key={k} onClick={()=>navigate(k)} className="hover:text-teal">{l}</button>)}
+          </nav>
+        </div>
+        <p className="max-w-7xl mx-auto px-4 mt-4 text-xs text-slate-400">100 компаний · данные редактируются в companies-data.js · «н/д» = публично не раскрыто. Сборка июнь 2026, требует проверки перед профессиональным использованием.</p>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+</script>
+</body>
+</html>
