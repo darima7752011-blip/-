@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ФармаНавигатор — справочник по фарм-отрасли России</title>
+<meta name="description" content="Справочник-навигатор по 100 крупнейшим фармацевтическим компаниям с производством и присутствием в России: масштаб, заводы, продуктовый портфель, вакансии — для рекрутеров." />
+
+<!-- Tailwind -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- React -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<!-- Babel -->
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<!-- Recharts -->
+<script src="https://unpkg.com/prop-types@15/prop-types.min.js"></script>
+<script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
+
+<!-- Данные 100 компаний — редактируются в companies-data.js -->
+<script src="companies-data.js"></script>
+
+<script>
+  tailwind.config = {
+    theme: { extend: {
+      fontFamily: { display:['Manrope','system-ui','sans-serif'], body:['Inter','system-ui','sans-serif'] },
+      colors: { ink:'#0e2a3b', slate2:'#5b7282', mint:'#0fb5ba', teal:'#0e9aa0', sky:'#1d9bf0', paper:'#f4f9fa' },
+      boxShadow: { soft:'0 1px 2px rgba(14,42,59,.05), 0 10px 30px rgba(14,42,59,.07)' },
+    }},
+  };
+</script>
+
+<style>
+  html{scroll-behavior:smooth}
+  body{font-family:'Inter',sans-serif;background:#f4f9fa;color:#0e2a3b}
+  h1,h2,h3,h4{font-family:'Manrope',sans-serif;letter-spacing:-.015em}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:#cfe3e6;border-radius:6px;border:3px solid #f4f9fa}
+  ::-webkit-scrollbar-thumb:hover{background:#b6d6da}
+  .leaflet-container{font-family:'Inter',sans-serif;border-radius:18px}
+  .leaflet-popup-content-wrapper{border-radius:14px;box-shadow:0 8px 30px rgba(14,42,59,.18)}
+  .leaflet-popup-content{margin:14px 16px;font-size:13px;line-height:1.45}
+  .fade-in{animation:fade .4s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .stagger>*{animation:fade .45s cubic-bezier(.2,.7,.3,1) both}
+  .stagger>*:nth-child(1){animation-delay:.02s}.stagger>*:nth-child(2){animation-delay:.05s}
+  .stagger>*:nth-child(3){animation-delay:.08s}.stagger>*:nth-child(4){animation-delay:.11s}
+  .stagger>*:nth-child(5){animation-delay:.14s}.stagger>*:nth-child(6){animation-delay:.17s}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important}html{scroll-behavior:auto}}
+  details>summary{list-style:none;cursor:pointer}
+  details>summary::-webkit-details-marker{display:none}
+  .skeleton{background:linear-gradient(90deg,#eef4f5 25%,#e2eef0 37%,#eef4f5 63%);background-size:400% 100%;animation:sk 1.4s ease infinite}
+  @keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+  [tabindex]:focus-visible,a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #0fb5ba;outline-offset:2px;border-radius:8px}
+  .hairline{background:linear-gradient(90deg,transparent,#d4e6e8,transparent);height:1px}
+  @media print{header,footer,.no-print{display:none!important}body{background:#fff}}
+  mark{background:#cdeff0;color:inherit;padding:0 1px;border-radius:3px}
+  .mesh{background:
+    radial-gradient(60% 70% at 12% 0%, rgba(15,181,186,.16), transparent 60%),
+    radial-gradient(50% 60% at 95% 5%, rgba(29,155,240,.12), transparent 55%),
+    radial-gradient(45% 55% at 70% 100%, rgba(124,58,237,.07), transparent 60%);}
+  .card-hover{transition:transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s}
+</style>
+</head>
+<body>
+<div id="root">
+  <div style="max-width:640px;margin:90px auto;padding:0 24px;font-family:Manrope,system-ui;text-align:center;color:#0e2a3b">
+    <div style="font-size:42px">💊</div>
+    <h1 style="font-size:22px;font-weight:800;margin:10px 0 8px">ФармаНавигатор загружается…</h1>
+    <p style="color:#5b7282;font-size:14px;line-height:1.6">Подгружаются карта и графики. Нужно интернет-соединение. Если за 10–15 сек. ничего не появилось — обновите страницу (F5).</p>
+  </div>
+</div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect, useRef, useCallback } = React;
+const RC = window.Recharts || {};
+const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } = RC;
+
+const DATA = (window.PHARMA_COMPANIES || []).map((c, i) => ({ id: i, ...c }));
+
+/* ============ helpers ============ */
+const fmtRub = (v) => v == null ? "н/д" : v.toLocaleString('ru-RU') + " млрд ₽";
+const fmtNum = (v) => (v === "н/д" || v == null) ? "н/д" : Number(v).toLocaleString('ru-RU');
+const initials = (n) => n.replace(/[«»()]/g,'').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+const uniq = (a) => [...new Set(a)];
+const ALL_SEGMENTS = uniq(DATA.flatMap(c => c.segments)).sort();
+const ALL_REGIONS  = uniq(DATA.flatMap(c => c.regions)).sort((a,b)=>a.localeCompare(b,'ru'));
+const ALL_AREAS    = uniq(DATA.flatMap(c => c.therapeuticAreas)).sort((a,b)=>a.localeCompare(b,'ru'));
+const PALETTE = ['#0fb5ba','#1d9bf0','#7c3aed','#f59e0b','#ef4444','#10b981','#6366f1','#ec4899','#14b8a6','#f97316'];
+
+function highlight(text, q) {
+  if (!q) return text;
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return text;
+  return <>{text.slice(0,i)}<mark>{text.slice(i,i+q.length)}</mark>{text.slice(i+q.length)}</>;
+}
+
+/* ============ tiny atoms ============ */
+function Logo({ c, size=44 }) {
+  return <div style={{width:size,height:size,background:c.logoColor||'#0fb5ba',fontSize:size*0.36}}
+    className="rounded-xl flex items-center justify-center text-white font-display font-extrabold shrink-0 select-none">{initials(c.name)}</div>;
+}
+function Tag({ children, tone='mint', onClick }) {
+  const tones = { mint:'bg-mint/10 text-teal', sky:'bg-sky/10 text-sky-700', gray:'bg-slate-100 text-slate2',
+    green:'bg-emerald-50 text-emerald-700', amber:'bg-amber-50 text-amber-700', rose:'bg-rose-50 text-rose-600', ink:'bg-ink text-white' };
+  const Cmp = onClick ? 'button' : 'span';
+  return <Cmp onClick={onClick} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${tones[tone]} ${onClick?'hover:opacity-80 transition':''}`}>{children}</Cmp>;
+}
+function CountryBadge({ country }) {
+  const map = { 'РФ':['green','🇷🇺 Российская'], 'Зарубеж':['sky','🌍 Зарубежная'], 'СП':['amber','🤝 Совместная'] };
+  const [tone,label] = map[country] || ['gray', country];
+  return <Tag tone={tone}>{label}</Tag>;
+}
+function RankBadge({ rank }) {
+  if (!rank) return null;
+  const top3 = rank<=3;
+  return <span title="Позиция в рейтинге Forbes по итогам 2025 г."
+    className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full ${top3?'bg-amber-100 text-amber-800':'bg-slate-100 text-slate2'}`}>
+    {top3?'★':'#'}{rank} <span className="font-medium opacity-70">Forbes</span></span>;
+}
+function Stat({ value, label, sub, accent }) {
+  return <div className="bg-white rounded-2xl p-4 md:p-5 shadow-soft relative overflow-hidden">
+    {accent && <div className="absolute left-0 top-0 bottom-0 w-1" style={{background:accent}} />}
+    <div className="text-2xl md:text-[28px] font-display font-extrabold leading-tight">{value}</div>
+    <div className="text-sm text-slate2 mt-1">{label}</div>
+    {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
+  </div>;
+}
+function Section({ title, icon, children, action }) {
+  return <div className="bg-white rounded-2xl p-5 md:p-6 shadow-soft">
+    <div className="flex items-center justify-between gap-3 mb-4">
+      <h3 className="font-display font-bold text-lg flex items-center gap-2"><span aria-hidden>{icon}</span>{title}</h3>
+      {action}
+    </div>
+    {children}
+  </div>;
+}
+
+/* ============ routing (hash based) ============ */
+function parseHash() {
+  const h = (location.hash||'#/').replace(/^#/,'');
+  const parts = h.split('/').filter(Boolean);
+  if (parts[0]==='company' && parts[1]!=null) return { view:'company', id:Number(parts[1]) };
+  const known = ['dashboard','catalog','map','compare','analytics','glossary','about'];
+  return { view: known.includes(parts[0])?parts[0]:'dashboard', id:null };
+}
+
+/* ============ NAV ============ */
+const NAV = [['dashboard','Обзор'],['catalog','Каталог'],['map','Карта'],['compare','Сравнение'],['analytics','Аналитика'],['glossary','Словарь'],['about','О проекте']];
+function Nav({ view, query, setQuery, navigate }) {
+  const [open, setOpen] = useState(false);
+  const active = view==='company' ? 'catalog' : view;
+  return (
+    <header className="sticky top-0 z-[1000] bg-white/85 backdrop-blur-md border-b border-slate-100 no-print">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
+        <button onClick={()=>navigate('dashboard')} className="flex items-center gap-2 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-mint to-sky flex items-center justify-center text-white font-display font-extrabold shadow-sm">Ф</div>
+          <span className="font-display font-extrabold text-lg hidden sm:block">ФармаНавигатор</span>
+        </button>
+        <nav className="hidden md:flex items-center gap-0.5 ml-2">
+          {NAV.map(([k,l]) => (
+            <button key={k} onClick={()=>navigate(k)} aria-current={active===k?'page':undefined}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${active===k?'bg-mint/10 text-teal':'text-slate2 hover:text-ink hover:bg-slate-50'}`}>{l}</button>
+          ))}
+        </nav>
+        <div className="flex-1" />
+        <div className="relative hidden sm:block">
+          <input value={query} onChange={e=>{setQuery(e.target.value); if(e.target.value && active!=='catalog') navigate('catalog');}}
+            placeholder="Поиск компании…" aria-label="Поиск компании"
+            className="w-44 lg:w-64 pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-mint/40 focus:border-mint" />
+          <svg className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+        </div>
+        <button onClick={()=>setOpen(!open)} className="md:hidden p-2 rounded-lg hover:bg-slate-50" aria-label="Меню" aria-expanded={open}>
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d={open?"M6 6l12 12M6 18L18 6":"M4 6h16M4 12h16M4 18h16"}/></svg>
+        </button>
+      </div>
+      {open && (
+        <div className="md:hidden border-t border-slate-100 px-4 py-3 grid grid-cols-2 gap-2 bg-white">
+          {NAV.map(([k,l]) => (
+            <button key={k} onClick={()=>{navigate(k); setOpen(false);}}
+              className={`px-3 py-2 rounded-lg text-sm font-medium text-left ${active===k?'bg-mint/10 text-teal':'text-slate2 hover:bg-slate-50'}`}>{l}</button>
+          ))}
+          <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Поиск…" aria-label="Поиск"
+            className="col-span-2 mt-1 px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+        </div>
+      )}
+    </header>
+  );
+}
+
+/* ============ DASHBOARD ============ */
+function Dashboard({ navigate, setQuery }) {
+  const total = DATA.length;
+  const ru = DATA.filter(c=>c.country==='РФ').length;
+  const foreign = DATA.filter(c=>c.country==='Зарубеж').length;
+  const sp = DATA.filter(c=>c.country==='СП').length;
+  const withProd = DATA.filter(c=>c.hasProductionInRussia).length;
+  const factories = DATA.flatMap(c=>c.factories).length;
+  const regions = ALL_REGIONS.length;
+  const withRnD = DATA.filter(c=>c.hasRnD).length;
+
+  const regionCounts = useMemo(()=>{
+    const r={}; DATA.forEach(c=>c.regions.forEach(reg=>{ r[reg]=(r[reg]||0)+1; }));
+    return Object.entries(r).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value).slice(0,8);
+  },[]);
+  const segCounts = useMemo(()=>{
+    const m={}; DATA.forEach(c=>c.segments.forEach(s=>{ m[s]=(m[s]||0)+1; }));
+    return Object.entries(m).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
+  },[]);
+  const topRevenue = useMemo(()=> DATA.filter(c=>c.revenue!=null).sort((a,b)=>b.revenue-a.revenue).slice(0,5), []);
+
+  return (
+    <div className="fade-in">
+      <section className="relative overflow-hidden mesh">
+        <div className="absolute -right-24 -top-24 w-96 h-96 rounded-full bg-mint/10 blur-3xl" />
+        <div className="relative max-w-7xl mx-auto px-4 pt-12 md:pt-16 pb-10">
+          <Tag tone="mint">● Справочник для рекрутеров фарм-отрасли</Tag>
+          <h1 className="mt-4 text-3xl md:text-5xl font-display font-extrabold leading-[1.08] max-w-3xl">
+            Фарм-отрасль России —<br/><span className="text-teal">за 5 минут понятно, кто есть кто</span>
+          </h1>
+          <p className="mt-4 text-slate2 max-w-2xl text-base md:text-lg">
+            100 крупнейших игроков: масштаб, локации производств, численность персонала, продуктовый портфель.
+            Каталог, карта заводов, сравнение и аналитика — чтобы быстро войти в индустрию.
+          </p>
+          <div className="mt-6 max-w-xl relative">
+            <input onChange={e=>{ setQuery(e.target.value); if(e.target.value) navigate('catalog'); }}
+              placeholder="Найти компанию по названию…" aria-label="Поиск компании"
+              className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-200 bg-white/90 shadow-soft text-base focus:outline-none focus:ring-2 focus:ring-mint/40 focus:border-mint" />
+            <svg className="w-5 h-5 absolute left-4 top-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button onClick={()=>navigate('catalog')} className="px-5 py-3 rounded-xl bg-ink text-white font-medium hover:opacity-90 transition shadow-soft">Открыть каталог →</button>
+            <button onClick={()=>navigate('map')} className="px-5 py-3 rounded-xl bg-white border border-slate-200 font-medium hover:border-mint transition">Карта производств</button>
+            <button onClick={()=>navigate('glossary')} className="px-5 py-3 rounded-xl bg-white border border-slate-200 font-medium hover:border-mint transition">Фарма для новичка 📖</button>
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 mt-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 stagger">
+          <Stat accent="#0fb5ba" value="≈1,89 трлн ₽" label="Розничный фармрынок РФ" sub="2025, RNC Pharma" />
+          <Stat accent="#1d9bf0" value="47,3%" label="Доля отечественных лекарств" sub="в ₽, 2025, AlphaRM" />
+          <Stat accent="#7c3aed" value={total} label="Компаний в справочнике" sub={`${withProd} с заводом в РФ · ${withRnD} с R&D`} />
+          <Stat accent="#f59e0b" value={factories} label="Производственных площадок" sub={`${regions} регионов`} />
+        </div>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 mt-8 grid lg:grid-cols-2 gap-4">
+        <Section title="Топ-регионы по присутствию" icon="📍">
+          <p className="text-sm text-slate2 -mt-3 mb-3">Сколько компаний представлено в регионе</p>
+          <div style={{height:280}}>
+            <ResponsiveContainer>
+              <BarChart data={regionCounts} layout="vertical" margin={{left:8,right:24}}>
+                <XAxis type="number" hide /><YAxis type="category" dataKey="name" width={150} tick={{fontSize:12,fill:'#5b7282'}} axisLine={false} tickLine={false} />
+                <Tooltip cursor={{fill:'#f1f5f9'}} contentStyle={{borderRadius:12,border:'none',boxShadow:'0 8px 24px rgba(0,0,0,.1)'}} />
+                <Bar dataKey="value" radius={[0,7,7,0]} fill="#0fb5ba" barSize={20} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Section>
+        <Section title="Происхождение компаний" icon="🏳️">
+          <p className="text-sm text-slate2 -mt-3 mb-3">Российские · зарубежные · совместные</p>
+          <div style={{height:280}}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={[{name:'Российские',value:ru},{name:'Зарубежные',value:foreign},{name:'Совместные',value:sp}]}
+                  dataKey="value" nameKey="name" innerRadius={64} outerRadius={100} paddingAngle={3} stroke="none">
+                  <Cell fill="#10b981" /><Cell fill="#1d9bf0" /><Cell fill="#f59e0b" />
+                </Pie>
+                <Legend iconType="circle" /><Tooltip contentStyle={{borderRadius:12,border:'none',boxShadow:'0 8px 24px rgba(0,0,0,.1)'}} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Section>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 mt-4 grid lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <Section title="Сегменты рынка" icon="🧬" action={<button onClick={()=>navigate('analytics')} className="text-sm text-teal font-medium hover:underline">Вся аналитика →</button>}>
+            <p className="text-sm text-slate2 -mt-3 mb-3">Компания может относиться к нескольким сегментам</p>
+            <div style={{height:230}}>
+              <ResponsiveContainer>
+                <BarChart data={segCounts} margin={{left:0,right:8,top:8}}>
+                  <XAxis dataKey="name" tick={{fontSize:11,fill:'#5b7282'}} interval={0} axisLine={false} tickLine={false} />
+                  <YAxis hide /><Tooltip cursor={{fill:'#f1f5f9'}} contentStyle={{borderRadius:12,border:'none',boxShadow:'0 8px 24px rgba(0,0,0,.1)'}} />
+                  <Bar dataKey="value" radius={[7,7,0,0]} barSize={38}>
+                    {segCounts.map((e,i)=><Cell key={i} fill={PALETTE[i%PALETTE.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+              {segCounts.map((s,i)=>(
+                <button key={s.name} onClick={()=>navigate('catalog')} className="flex items-center gap-1.5 text-xs text-slate2 hover:text-ink">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{background:PALETTE[i%PALETTE.length]}} />{s.name}<span className="font-semibold text-ink">{s.value}</span>
+                </button>
+              ))}
+            </div>
+          </Section>
+        </div>
+        <Section title="Топ по выручке в РФ" icon="🏆" action={<button onClick={()=>navigate('analytics')} className="text-sm text-teal font-medium hover:underline">Все →</button>}>
+          <ol className="space-y-2">
+            {topRevenue.map((c,i)=>(
+              <li key={c.id}>
+                <button onClick={()=>navigate('company',c.id)} className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 transition text-left">
+                  <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${i<3?'bg-amber-100 text-amber-800':'bg-slate-100 text-slate2'}`}>{i+1}</span>
+                  <Logo c={c} size={30} />
+                  <span className="flex-1 min-w-0 truncate text-sm font-medium">{c.name}</span>
+                  <span className="text-sm font-bold text-ink">{c.revenue}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+          <div className="text-xs text-slate-400 mt-2 px-2">млрд ₽ · 2025</div>
+        </Section>
+      </section>
+
+      <section className="max-w-7xl mx-auto px-4 mt-8 mb-12">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 stagger">
+          {[
+            ['catalog','Каталог компаний','Карточки, фильтры, поиск, экспорт','#0fb5ba','▦'],
+            ['map','Карта производств','Все заводы на карте России','#1d9bf0','◉'],
+            ['compare','Сравнить компании','2–4 компании в таблице','#7c3aed','⇄'],
+            ['glossary','Словарь терминов','GMP, дженерик, ЖНВЛП…','#f59e0b','📖'],
+          ].map(([k,t,d,col,ic])=>(
+            <button key={k} onClick={()=>navigate(k)} className="text-left bg-white rounded-2xl p-5 shadow-soft card-hover hover:-translate-y-1 hover:shadow-lg group">
+              <div className="w-10 h-10 rounded-xl mb-3 flex items-center justify-center text-white text-lg font-bold group-hover:scale-110 transition" style={{background:col}}>{ic}</div>
+              <div className="font-display font-bold">{t}</div>
+              <div className="text-sm text-slate2 mt-0.5">{d}</div>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/* ============ CATALOG ============ */
+function CompanyCard({ c, onOpen, query }) {
+  return (
+    <button onClick={()=>onOpen(c.id)} className="text-left bg-white rounded-2xl p-5 shadow-soft card-hover hover:-translate-y-1 hover:shadow-lg w-full group">
+      <div className="flex items-start gap-3">
+        <Logo c={c} />
+        <div className="min-w-0 flex-1">
+          <div className="font-display font-bold text-ink truncate group-hover:text-teal transition">{highlight(c.name, query)}</div>
+          <div className="mt-1.5 flex flex-wrap gap-1.5 items-center">
+            <CountryBadge country={c.country} />
+            {c.marketRank && <RankBadge rank={c.marketRank} />}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <div><div className="text-slate-400 text-xs">Выручка в РФ</div><div className="font-semibold">{fmtRub(c.revenue)}</div></div>
+        <div><div className="text-slate-400 text-xs">Сотрудники РФ</div><div className="font-semibold">{fmtNum(c.employeesRussia)}</div></div>
+      </div>
+      <div className="mt-3 text-xs text-slate2 truncate">📍 {c.regions.slice(0,3).join(' · ') || 'н/д'}{c.regions.length>3?` +${c.regions.length-3}`:''}</div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {c.hasProductionInRussia && <Tag tone="green">Завод в РФ</Tag>}
+        {c.hasRnD && <Tag tone="sky">R&D в РФ</Tag>}
+        {c.segments.slice(0,2).map(s=><Tag key={s} tone="gray">{s}</Tag>)}
+        {c.segments.length>2 && <Tag tone="gray">+{c.segments.length-2}</Tag>}
+      </div>
+    </button>
+  );
+}
+
+function Catalog({ navigate, query, setQuery, filters, setFilters }) {
+  const { country, prodOnly, rndOnly, region, segment, area, sort } = filters;
+  const set = (k,v)=> setFilters({...filters,[k]:v});
+
+  const filtered = useMemo(()=>{
+    let list = DATA.filter(c=>{
+      if (query && !c.name.toLowerCase().includes(query.toLowerCase()) && !c.fullName.toLowerCase().includes(query.toLowerCase())) return false;
+      if (country!=='all' && c.country!==country) return false;
+      if (prodOnly && !c.hasProductionInRussia) return false;
+      if (rndOnly && !c.hasRnD) return false;
+      if (region!=='all' && !c.regions.includes(region)) return false;
+      if (segment!=='all' && !c.segments.includes(segment)) return false;
+      if (area!=='all' && !c.therapeuticAreas.includes(area)) return false;
+      return true;
+    });
+    const num = v => (typeof v==='number'?v:0);
+    list.sort((a,b)=>{
+      if (sort==='revenue') return (b.revenue??-1)-(a.revenue??-1);
+      if (sort==='employees') return num(b.employeesRussia)-num(a.employeesRussia);
+      if (sort==='factories') return b.factories.length-a.factories.length;
+      if (sort==='rank') return (a.marketRank??999)-(b.marketRank??999);
+      if (sort==='name') return a.name.localeCompare(b.name,'ru');
+      return 0;
+    });
+    return list;
+  },[query,country,prodOnly,rndOnly,region,segment,area,sort]);
+
+  const activeChips = [];
+  if (country!=='all') activeChips.push(['Происхождение: '+country, ()=>set('country','all')]);
+  if (region!=='all') activeChips.push(['Регион: '+region, ()=>set('region','all')]);
+  if (segment!=='all') activeChips.push(['Сегмент: '+segment, ()=>set('segment','all')]);
+  if (area!=='all') activeChips.push(['Область: '+area, ()=>set('area','all')]);
+  if (prodOnly) activeChips.push(['Только с заводом в РФ', ()=>set('prodOnly',false)]);
+  if (rndOnly) activeChips.push(['Только с R&D в РФ', ()=>set('rndOnly',false)]);
+  if (query) activeChips.push(['Поиск: "'+query+'"', ()=>setQuery('')]);
+
+  const reset = ()=>{ setFilters({country:'all',prodOnly:false,rndOnly:false,region:'all',segment:'all',area:'all',sort}); setQuery(''); };
+
+  const exportCSV = ()=>{
+    const head = ['Название','Полное название','Происхождение','Заводов в РФ','Регионы','Выручка РФ (млрд ₽)','Сотрудники РФ','Сегменты','Терапевт. области','R&D в РФ','Сайт'];
+    const rows = filtered.map(c=>[c.name,c.fullName,c.country,c.factories.length,c.regions.join('; '),c.revenue??'',c.employeesRussia,c.segments.join('; '),c.therapeuticAreas.join('; '),c.hasRnD?'Да':'Нет',c.website||'']
+      .map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+    const csv = '﻿'+[head.join(','),...rows].join('\n');
+    const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+    const a = document.createElement('a'); a.href=url; a.download='pharma-companies.csv'; a.click(); URL.revokeObjectURL(url);
+  };
+
+  const Sel = ({value,onChange,children,label}) => (
+    <label className="block">
+      <span className="text-xs text-slate-400">{label}</span>
+      <select value={value} onChange={e=>onChange(e.target.value)}
+        className="mt-1 w-full px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-mint/40">{children}</select>
+    </label>
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 fade-in">
+      <div className="flex items-end justify-between gap-3 flex-wrap mb-5">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-display font-extrabold">Каталог компаний</h1>
+          <p className="text-slate2 text-sm mt-1">{filtered.length} из {DATA.length} компаний</p>
+        </div>
+        <div className="flex gap-2 items-end">
+          <button onClick={exportCSV} className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium hover:border-mint flex items-center gap-1.5" title="Скачать отфильтрованный список в CSV">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>CSV
+          </button>
+          <Sel value={sort} onChange={v=>set('sort',v)} label="Сортировка">
+            <option value="revenue">По выручке</option>
+            <option value="rank">По рейтингу Forbes</option>
+            <option value="employees">По сотрудникам</option>
+            <option value="factories">По числу заводов</option>
+            <option value="name">По названию</option>
+          </Sel>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4 bg-white p-4 rounded-2xl shadow-soft">
+        <Sel value={country} onChange={v=>set('country',v)} label="Происхождение">
+          <option value="all">Все</option><option value="РФ">Российские</option><option value="Зарубеж">Зарубежные</option><option value="СП">Совместные</option>
+        </Sel>
+        <Sel value={region} onChange={v=>set('region',v)} label="Регион">
+          <option value="all">Все регионы</option>{ALL_REGIONS.map(r=><option key={r} value={r}>{r}</option>)}
+        </Sel>
+        <Sel value={segment} onChange={v=>set('segment',v)} label="Сегмент">
+          <option value="all">Все сегменты</option>{ALL_SEGMENTS.map(s=><option key={s} value={s}>{s}</option>)}
+        </Sel>
+        <Sel value={area} onChange={v=>set('area',v)} label="Терапевт. область">
+          <option value="all">Все области</option>{ALL_AREAS.map(a=><option key={a} value={a}>{a}</option>)}
+        </Sel>
+        <div className="flex flex-col justify-end gap-1.5 pb-1">
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={prodOnly} onChange={e=>set('prodOnly',e.target.checked)} className="w-4 h-4 accent-mint" />
+            <span className="text-sm">Завод в РФ</span>
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={rndOnly} onChange={e=>set('rndOnly',e.target.checked)} className="w-4 h-4 accent-mint" />
+            <span className="text-sm">R&D в РФ</span>
+          </label>
+        </div>
+      </div>
+
+      {activeChips.length>0 && (
+        <div className="flex flex-wrap gap-2 mb-5 items-center">
+          {activeChips.map(([label,clear],i)=>(
+            <button key={i} onClick={clear} className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full bg-mint/10 text-teal hover:bg-mint/20 transition">
+              {label}<span className="text-base leading-none">×</span>
+            </button>
+          ))}
+          <button onClick={reset} className="text-xs text-slate-400 hover:text-ink underline ml-1">сбросить всё</button>
+        </div>
+      )}
+
+      {filtered.length===0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center shadow-soft">
+          <div className="text-4xl mb-2">🔍</div>
+          <p className="text-slate2 font-medium">Ничего не нашлось</p>
+          <p className="text-sm text-slate-400 mt-1">Попробуйте смягчить фильтры или изменить запрос.</p>
+          <button onClick={reset} className="mt-4 px-4 py-2 rounded-xl bg-mint/10 text-teal font-medium">Сбросить всё</button>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger">
+          {filtered.map(c=><CompanyCard key={c.id} c={c} onOpen={(id)=>navigate('company',id)} query={query} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============ MINI MAP ============ */
+function MiniMap({ factories }) {
+  const ref = useRef(null);
+  useEffect(()=>{
+    if(!ref.current || !factories.length || !window.L) return;
+    const map = L.map(ref.current, { scrollWheelZoom:false, zoomControl:true });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(map);
+    const ms = factories.map(f=>{
+      const m = L.marker([f.lat,f.lng]).addTo(map);
+      m.bindPopup(`<b>${f.city}</b><br/>${f.products}<br/>GMP: ${f.gmp}`);
+      return m;
+    });
+    map.fitBounds(L.featureGroup(ms).getBounds().pad(0.4), { maxZoom:6 });
+    return ()=>map.remove();
+  },[factories]);
+  if(!factories.length) return <div className="text-sm text-slate-400 py-6 text-center bg-slate-50 rounded-xl">Координаты заводов не указаны (нет локального производства).</div>;
+  return <div ref={ref} style={{height:300}} className="rounded-2xl overflow-hidden border border-slate-100 z-0" />;
+}
+
+/* ============ COMPANY PAGE ============ */
+function Field({ label, value }) {
+  return <div><div className="text-xs text-slate-400">{label}</div><div className="font-semibold mt-0.5">{value}</div></div>;
+}
+function CompanyPage({ c, navigate }) {
+  const idx = DATA.findIndex(x=>x.id===c.id);
+  const prev = DATA[(idx-1+DATA.length)%DATA.length], next = DATA[(idx+1)%DATA.length];
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-8 fade-in">
+      <div className="flex items-center justify-between mb-4 no-print">
+        <button onClick={()=>navigate('catalog')} className="text-sm text-slate2 hover:text-ink flex items-center gap-1">← К каталогу</button>
+        <div className="flex items-center gap-1">
+          <button onClick={()=>window.print()} className="px-3 py-1.5 rounded-lg text-sm text-slate2 hover:bg-white" title="Печать / PDF">🖨 Печать</button>
+          <button onClick={()=>navigate('company',prev.id)} className="px-3 py-1.5 rounded-lg text-sm text-slate2 hover:bg-white" title={prev.name}>← Пред.</button>
+          <button onClick={()=>navigate('company',next.id)} className="px-3 py-1.5 rounded-lg text-sm text-slate2 hover:bg-white" title={next.name}>След. →</button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl p-6 shadow-soft relative overflow-hidden">
+        <div className="absolute inset-x-0 top-0 h-1.5" style={{background:c.logoColor||'#0fb5ba'}} />
+        <div className="flex items-start gap-4 flex-wrap">
+          <Logo c={c} size={64} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-2xl md:text-3xl font-display font-extrabold">{c.name}</h1>
+              {c.marketRank && <RankBadge rank={c.marketRank} />}
+            </div>
+            <p className="text-slate2 mt-0.5">{c.fullName}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <CountryBadge country={c.country} />
+              <Tag tone="gray">{c.status}</Tag>
+              {c.hasProductionInRussia && <Tag tone="green">Производство в РФ</Tag>}
+              {c.hasRnD && <Tag tone="sky">R&D в РФ</Tag>}
+            </div>
+          </div>
+          {c.website && <a href={c.website} target="_blank" rel="noopener" className="px-4 py-2 rounded-xl bg-ink text-white text-sm font-medium hover:opacity-90 no-print">Сайт ↗</a>}
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 stagger">
+        <Stat accent="#0fb5ba" value={fmtRub(c.revenue)} label={`Выручка в РФ (${c.revenueYear})`} />
+        <Stat accent="#1d9bf0" value={fmtNum(c.employeesRussia)} label="Сотрудники в РФ" />
+        <Stat accent="#7c3aed" value={fmtNum(c.employeesGlobal)} label="Сотрудники глобально" />
+        <Stat accent="#f59e0b" value={c.yearEnteredRussia} label="На рынке РФ с" />
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-4 mt-4">
+        <div className="md:col-span-2">
+          <Section title="Производство в России" icon="🏭"
+            action={<span className="text-sm text-slate2">{c.factories.length} {c.factories.length===1?'площадка':'площадок'}</span>}>
+            <MiniMap factories={c.factories} />
+            <div className="mt-4 grid sm:grid-cols-2 gap-3">
+              {c.factories.length ? c.factories.map((f,i)=>(
+                <div key={i} className="border border-slate-100 rounded-xl p-4 hover:border-mint/40 transition">
+                  <div className="font-semibold flex items-center justify-between gap-2">
+                    <span>📍 {f.city}</span><Tag tone={f.gmp==='Да'?'green':'gray'}>GMP: {f.gmp}</Tag>
+                  </div>
+                  <div className="text-sm text-slate2 mt-1">{f.products}</div>
+                </div>
+              )) : <div className="text-sm text-slate-400">Собственные площадки в РФ не указаны — коммерческое присутствие / импорт.</div>}
+            </div>
+          </Section>
+        </div>
+
+        <Section title="Продуктовый портфель" icon="💊">
+          <div className="text-xs text-slate-400 mb-1">Терапевтические области</div>
+          <div className="flex flex-wrap gap-1.5 mb-4">{c.therapeuticAreas.map(a=><Tag key={a} tone="mint">{a}</Tag>)}</div>
+          <div className="text-xs text-slate-400 mb-1">Ключевые препараты</div>
+          <ul className="text-sm space-y-1">{c.keyProducts.map((p,i)=><li key={i} className="flex gap-2"><span className="text-mint">•</span>{p}</li>)}</ul>
+        </Section>
+
+        <Section title="Для рекрутера" icon="🧑‍💼">
+          <Field label="Типичные функции / вакансии" value={
+            <div className="flex flex-wrap gap-1.5 mt-1">{(c.hr?.roles||[]).map(r=><Tag key={r} tone="sky">{r}</Tag>)}</div>} />
+          <div className="mt-3"><Field label="R&D в России" value={c.hasRnD?'Да':'Нет / не подтверждено'} /></div>
+          {c.hr?.note && <p className="text-sm text-slate2 mt-3">{c.hr.note}</p>}
+          {c.hr?.careerSite && <a href={c.hr.careerSite} target="_blank" rel="noopener" className="inline-block mt-3 px-4 py-2 rounded-xl bg-mint/10 text-teal text-sm font-medium no-print">Карьерный сайт ↗</a>}
+        </Section>
+
+        <Section title="Профиль и сегменты" icon="🧬">
+          <div className="text-xs text-slate-400 mb-1">Сегменты</div>
+          <div className="flex flex-wrap gap-1.5 mb-4">{c.segments.map(s=><Tag key={s} tone="gray">{s}</Tag>)}</div>
+          <div className="text-xs text-slate-400 mb-1">Регионы присутствия</div>
+          <div className="flex flex-wrap gap-1.5">{c.regions.map(r=><Tag key={r} tone="amber">{r}</Tag>)}</div>
+        </Section>
+
+        {c.note && <div className="md:col-span-2"><Section title="Ключевые события" icon="📰"><p className="text-sm text-slate2">{c.note}</p></Section></div>}
+      </div>
+    </div>
+  );
+}
+
+/* ============ FULL MAP ============ */
+function FullMap({ navigate }) {
+  const ref = useRef(null), mapRef = useRef(null), layerRef = useRef(null);
+  const [seg, setSeg] = useState('all');
+  const [ready, setReady] = useState(false);
+
+  const points = useMemo(()=>{
+    const pts=[];
+    DATA.forEach(c=>{ if (seg!=='all' && !c.segments.includes(seg)) return; c.factories.forEach(f=>pts.push({...f, company:c})); });
+    return pts;
+  },[seg]);
+
+  useEffect(()=>{
+    if(!ref.current || !window.L) return;
+    if(!mapRef.current){
+      mapRef.current = L.map(ref.current,{zoomControl:true}).setView([58,75],3.2);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:19}).addTo(mapRef.current);
+      mapRef.current.whenReady(()=>setReady(true));
+    }
+    const map = mapRef.current;
+    if(layerRef.current) layerRef.current.remove();
+    layerRef.current = L.layerGroup().addTo(map);
+    points.forEach(p=>{
+      const m = L.circleMarker([p.lat,p.lng],{radius:8,fillColor:p.company.logoColor||'#0fb5ba',color:'#fff',weight:2,fillOpacity:.92});
+      m.addTo(layerRef.current);
+      const slug = `${p.company.id}-${p.city.replace(/\W/g,'')}`;
+      m.bindPopup(`<b>${p.company.name}</b><br/>📍 ${p.city}<br/>${p.products}<br/>GMP: ${p.gmp}<br/><a href="#" id="lnk-${slug}" style="color:#0e9aa0;font-weight:600">Открыть карточку →</a>`);
+      m.on('popupopen',()=>{ const el=document.getElementById(`lnk-${slug}`); if(el) el.onclick=(e)=>{e.preventDefault(); navigate('company',p.company.id);}; });
+    });
+  },[points,navigate]);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 fade-in">
+      <div className="flex items-end justify-between gap-3 flex-wrap mb-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-display font-extrabold">Карта производств</h1>
+          <p className="text-slate2 text-sm mt-1">{points.length} площадок · клик по метке → карточка компании</p>
+        </div>
+        <label className="block">
+          <span className="text-xs text-slate-400">Фильтр по сегменту</span>
+          <select value={seg} onChange={e=>setSeg(e.target.value)} className="mt-1 block px-3 py-2 rounded-xl border border-slate-200 text-sm bg-white">
+            <option value="all">Все сегменты</option>{ALL_SEGMENTS.map(s=><option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="relative">
+        {!ready && <div className="absolute inset-0 skeleton rounded-2xl z-10 flex items-center justify-center text-slate2 text-sm">Загрузка карты…</div>}
+        <div ref={ref} style={{height:'70vh',minHeight:420}} className="rounded-2xl shadow-soft z-0" />
+      </div>
+    </div>
+  );
+}
+
+/* ============ COMPARE ============ */
+function Compare({ navigate, picked, setPicked }) {
+  const toggle = (id)=> setPicked(picked.includes(id) ? picked.filter(x=>x!==id) : (picked.length<4 ? [...picked,id] : picked));
+  const cols = picked.map(id=>DATA.find(c=>c.id===id)).filter(Boolean);
+  const best = (vals, fn) => { const nums = vals.map(fn).filter(v=>typeof v==='number'); return nums.length?Math.max(...nums):null; };
+  const rows = [
+    ['Происхождение', c=>c.country, false],
+    ['Статус', c=>c.status, false],
+    ['Выручка в РФ, млрд ₽', c=>c.revenue, true],
+    ['Сотрудники в РФ', c=>typeof c.employeesRussia==='number'?c.employeesRussia:c.employeesRussia, true],
+    ['Сотрудники глобально', c=>typeof c.employeesGlobal==='number'?c.employeesGlobal:c.employeesGlobal, true],
+    ['На рынке РФ с', c=>c.yearEnteredRussia, false],
+    ['Заводов в РФ', c=>c.factories.length, true],
+    ['Регионы', c=>c.regions.join(', ')||'н/д', false],
+    ['Сегменты', c=>c.segments.join(', '), false],
+    ['Терапевт. области', c=>c.therapeuticAreas.join(', '), false],
+    ['R&D в РФ', c=>c.hasRnD?'Да':'Нет', false],
+  ];
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 fade-in">
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">Сравнение компаний</h1>
+      <p className="text-slate2 text-sm mt-1">Выберите от 2 до 4 компаний · лучшее значение в строке подсвечивается</p>
+
+      <div className="mt-5 flex flex-wrap gap-2 max-h-44 overflow-y-auto p-1">
+        {DATA.map(c=>{
+          const on = picked.includes(c.id), disabled = picked.length>=4&&!on;
+          return <button key={c.id} onClick={()=>toggle(c.id)} disabled={disabled}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition ${on?'bg-ink text-white border-ink':'bg-white border-slate-200 hover:border-mint'} ${disabled?'opacity-40 cursor-not-allowed':''}`}>
+            {on&&'✓ '}{c.name}</button>;
+        })}
+      </div>
+
+      {cols.length>=2 ? (
+        <div className="mt-6 overflow-x-auto bg-white rounded-2xl shadow-soft">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left p-4 text-slate-400 font-medium w-48 sticky left-0 bg-white">Параметр</th>
+                {cols.map(c=>(
+                  <th key={c.id} className="text-left p-4">
+                    <button onClick={()=>navigate('company',c.id)} className="flex items-center gap-2 hover:text-teal">
+                      <Logo c={c} size={32} /><span className="font-display font-bold">{c.name}</span>
+                    </button>
+                    <button onClick={()=>toggle(c.id)} className="text-xs text-slate-400 hover:text-rose-500 mt-1">убрать ×</button>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(([label,fn,isNum],i)=>{
+                const top = isNum ? best(cols,fn) : null;
+                return (
+                  <tr key={i} className={i%2?'bg-slate-50/50':''}>
+                    <td className="p-4 text-slate-400 align-top sticky left-0 bg-inherit">{label}</td>
+                    {cols.map(c=>{
+                      const v = fn(c);
+                      const isBest = isNum && top!=null && v===top && cols.filter(x=>fn(x)===top).length<cols.length;
+                      const display = isNum && typeof v==='number' ? v.toLocaleString('ru-RU') : (v==='н/д'||v==null?'н/д':v);
+                      return <td key={c.id} className="p-4 align-top">
+                        <span className={isBest?'font-bold text-teal':''}>{display}{isBest&&' ★'}</span>
+                      </td>;
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="mt-6 bg-white rounded-2xl p-12 text-center shadow-soft text-slate2">
+          <div className="text-4xl mb-2">⇄</div>
+          Отметьте минимум 2 компании выше, чтобы увидеть таблицу сравнения.
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ============ ANALYTICS ============ */
+function Analytics({ navigate }) {
+  const byRevenue = DATA.filter(c=>c.revenue!=null).sort((a,b)=>b.revenue-a.revenue).slice(0,12).map(c=>({name:c.name,value:c.revenue,id:c.id}));
+  const byFactories = DATA.map(c=>({name:c.name,value:c.factories.length,id:c.id})).filter(c=>c.value>0).sort((a,b)=>b.value-a.value).slice(0,10);
+  const byEmployees = DATA.filter(c=>typeof c.employeesRussia==='number').sort((a,b)=>b.employeesRussia-a.employeesRussia).slice(0,8).map(c=>({name:c.name,value:c.employeesRussia,id:c.id}));
+  const segData = (()=>{ const m={}; DATA.forEach(c=>c.segments.forEach(s=>m[s]=(m[s]||0)+1)); return Object.entries(m).map(([name,value])=>({name,value})); })();
+  const areaData = (()=>{ const m={}; DATA.forEach(c=>c.therapeuticAreas.forEach(s=>m[s]=(m[s]||0)+1)); return Object.entries(m).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value).slice(0,10); })();
+
+  const Chart = ({title,sub,data,horizontal,onClick}) => (
+    <Section title={title} icon="📊">
+      <p className="text-sm text-slate2 -mt-3 mb-3">{sub}</p>
+      <div style={{height: horizontal? Math.max(220,data.length*36):260}}>
+        <ResponsiveContainer>
+          <BarChart data={data} layout={horizontal?'vertical':'horizontal'} margin={{left:horizontal?8:0,right:24,top:5}}
+            onClick={(st)=>{ if(onClick && st && st.activePayload) onClick(st.activePayload[0].payload); }}>
+            {horizontal ? <><XAxis type="number" hide /><YAxis type="category" dataKey="name" width={145} tick={{fontSize:11,fill:'#5b7282'}} axisLine={false} tickLine={false} /></>
+                        : <><XAxis dataKey="name" tick={{fontSize:10,fill:'#5b7282'}} interval={0} angle={-25} textAnchor="end" height={70} axisLine={false} tickLine={false} /><YAxis hide /></>}
+            <Tooltip cursor={{fill:'#f1f5f9'}} contentStyle={{borderRadius:12,border:'none',boxShadow:'0 8px 24px rgba(0,0,0,.1)'}} />
+            <Bar dataKey="value" radius={horizontal?[0,7,7,0]:[7,7,0,0]} barSize={horizontal?22:38} cursor={onClick?'pointer':'default'}>
+              {data.map((e,i)=><Cell key={i} fill={PALETTE[i%PALETTE.length]} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      {onClick && <p className="text-xs text-slate-400 mt-2">Клик по столбцу → карточка компании</p>}
+    </Section>
+  );
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-8 fade-in">
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">Аналитика и рейтинги</h1>
+      <p className="text-slate2 text-sm mt-1">По данным справочника. Где выручка не раскрыта — компания не попадает в денежные рейтинги.</p>
+
+      <div className="grid lg:grid-cols-2 gap-4 mt-6">
+        <Chart title="Топ по выручке в РФ" sub="млрд ₽, 2025" data={byRevenue} horizontal onClick={(p)=>navigate('company',p.id)} />
+        <Chart title="Топ по числу заводов в РФ" sub="производственных площадок" data={byFactories} horizontal onClick={(p)=>navigate('company',p.id)} />
+      </div>
+      <div className="grid lg:grid-cols-2 gap-4 mt-4">
+        <Chart title="Сотрудники в РФ (где раскрыто)" sub="человек" data={byEmployees} horizontal onClick={(p)=>navigate('company',p.id)} />
+        <Section title="Сегменты рынка" icon="🧬">
+          <p className="text-sm text-slate2 -mt-3 mb-3">Число компаний в каждом сегменте</p>
+          <div style={{height:280}}>
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie data={segData} dataKey="value" nameKey="name" outerRadius={100} stroke="none" label={({name,value})=>`${name}: ${value}`} labelLine={false} fontSize={11}>
+                  {segData.map((e,i)=><Cell key={i} fill={PALETTE[i%PALETTE.length]} />)}
+                </Pie>
+                <Tooltip contentStyle={{borderRadius:12,border:'none',boxShadow:'0 8px 24px rgba(0,0,0,.1)'}} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Section>
+      </div>
+      <div className="mt-4">
+        <Chart title="Топ терапевтических областей" sub="по числу присутствующих компаний" data={areaData} horizontal />
+      </div>
+    </div>
+  );
+}
+
+/* ============ GLOSSARY ============ */
+const GLOSSARY = [
+  ['GMP','Good Manufacturing Practice — надлежащая производственная практика. Международный стандарт качества и безопасности производства лекарств. Сертификат GMP — обязательное условие для легального выпуска препаратов.'],
+  ['Дженерик','Воспроизведённый аналог оригинального препарата с тем же действующим веществом, выпускаемый после истечения патента. Дешевле оригинала, биоэквивалентен ему.'],
+  ['Оригинальный препарат','Лекарство, впервые разработанное и выведенное на рынок компанией-разработчиком; защищено патентом. Требует полного цикла клинических исследований.'],
+  ['Биоаналог (биосимиляр)','Аналог биологического (например, белкового) препарата. В отличие от химического дженерика, не идентичен, а «подобен» оригиналу из-за сложности биопроизводства.'],
+  ['R&D','Research & Development — исследования и разработки. Подразделения, создающие новые молекулы и препараты. Наличие R&D в РФ — признак компании полного цикла.'],
+  ['Локализация','Перенос производства (полностью или частично — упаковка, готовая форма) на территорию России. Даёт доступ к госзакупкам и преференции по ЖНВЛП.'],
+  ['Регистрационное удостоверение (РУ)','Документ Минздрава, разрешающий обращение конкретного препарата в РФ. Число РУ в портфеле — показатель широты ассортимента компании.'],
+  ['ЖНВЛП','Жизненно необходимые и важнейшие лекарственные препараты — перечень, цены на который регулируются государством. Попадание в ЖНВЛП важно для госзакупок.'],
+  ['АФИ / субстанция','Активный фармацевтический ингредиент — действующее вещество препарата. «Полный цикл» означает выпуск от субстанции до готовой формы.'],
+  ['Готовая лекарственная форма (ГЛФ)','Финальный вид препарата для пациента: таблетка, ампула, капсула. «Локализация по ГЛФ» — финальные стадии производства в РФ.'],
+  ['Биотех','Производство лекарств биологическими методами (живые клетки, белки, моноклональные антитела). Технологически сложнее химического синтеза.'],
+  ['Моноклональные антитела','Биотехнологические белковые молекулы, прицельно связывающие мишень (например, опухолевые клетки). Основа современной онкологии и иммунологии.'],
+  ['Офсетный контракт','Соглашение между компанией и регионом: инвестиции в завод в обмен на гарантированный долгосрочный госзаказ.'],
+  ['OTC / безрецептурные','Over-the-counter — препараты, отпускаемые без рецепта (от простуды, витамины, анальгетики). Продаются напрямую потребителю.'],
+  ['Rx / рецептурные','Препараты, отпускаемые только по рецепту врача. Продвигаются через медицинских представителей, а не прямую рекламу.'],
+  ['Пайплайн','Портфель препаратов компании на разных стадиях разработки и регистрации — показатель будущего роста.'],
+  ['Клинические исследования (КИ)','Этапы проверки эффективности и безопасности препарата на людях (фазы I–III) перед регистрацией. Ключевая функция для R&D-компаний.'],
+  ['Медицинский представитель','Сотрудник, информирующий врачей и аптеки о препаратах компании. Самая массовая «полевая» вакансия в фарме.'],
+  ['Фармаконадзор','Система мониторинга безопасности лекарств после выхода на рынок (сбор данных о побочных эффектах). Обязательна для каждого производителя.'],
+  ['ЕАЭС','Единый рынок лекарств Евразийского экономического союза. Регистрация по правилам ЕАЭС открывает доступ сразу в несколько стран.'],
+];
+function Glossary() {
+  const [q,setQ]=useState('');
+  const list = GLOSSARY.filter(([t,d])=>(t+d).toLowerCase().includes(q.toLowerCase()));
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-8 fade-in">
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">Словарь терминов</h1>
+      <p className="text-slate2 text-sm mt-1">«Фарма для новичка» — базовые понятия для входа в отрасль</p>
+      <div className="relative mt-4">
+        <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Найти термин…"
+          className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-mint/40" />
+        <svg className="w-5 h-5 absolute left-3 top-3.5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+      </div>
+      <div className="mt-5 space-y-2">
+        {list.map(([t,d])=>(
+          <details key={t} className="bg-white rounded-2xl shadow-soft p-5 group" open={!!q}>
+            <summary className="font-display font-bold flex items-center justify-between">{t}<span className="text-mint text-xl group-open:rotate-45 transition">+</span></summary>
+            <p className="text-sm text-slate2 mt-3 leading-relaxed">{d}</p>
+          </details>
+        ))}
+        {list.length===0 && <p className="text-slate-400 text-center py-8">Термин не найден.</p>}
+      </div>
+    </div>
+  );
+}
+
+/* ============ ABOUT ============ */
+function About() {
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-8 fade-in">
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">О проекте</h1>
+      <div className="mt-5 space-y-4 text-slate2 leading-relaxed">
+        <div className="bg-white rounded-2xl p-6 shadow-soft">
+          <h3 className="font-display font-bold text-ink mb-2">Назначение</h3>
+          <p>Справочник-навигатор по 100 крупнейшим фармацевтическим компаниям с производством или присутствием в России. Инструмент быстрого входа в отрасль для рекрутеров: масштаб игроков, локации заводов, численность, продуктовый портфель.</p>
+        </div>
+        <div className="bg-white rounded-2xl p-6 shadow-soft">
+          <h3 className="font-display font-bold text-ink mb-2">Методология и данные</h3>
+          <p>Финансовые показатели (выручка, рейтинг) приведены по Forbes «20 лучших фармпроизводителей России» и данным AlphaRM / RNC Pharma по итогам 2025 года. Сведения о заводах, регионах и портфеле собраны из публичных корпоративных и отраслевых источников.</p>
+          <p className="mt-2"><b>Важно:</b> где компания не раскрывает данные публично (численность, выручка локализованных подразделений зарубежных компаний), стоит пометка «н/д» вместо оценочных цифр. Координаты заводов приблизительны (уровень города).</p>
+        </div>
+        <div className="bg-white rounded-2xl p-6 shadow-soft">
+          <h3 className="font-display font-bold text-ink mb-2">Как дополнять справочник</h3>
+          <p>Все данные о компаниях — в одном файле <code className="bg-slate-100 px-1.5 py-0.5 rounded text-sm">companies-data.js</code>. Чтобы добавить компанию, скопируйте любой блок, вставьте в конец списка и замените значения. Поле <code className="bg-slate-100 px-1.5 py-0.5 rounded text-sm">marketRank</code> (позиция в рейтинге) — необязательное. Код сайта менять не нужно: фильтры, карта, аналитика, сравнение и экспорт обновятся автоматически.</p>
+        </div>
+        <p className="text-sm text-slate-400">Данные приведены в иллюстративных целях и требуют проверки перед профессиональным использованием. Сборка: июнь 2026.</p>
+      </div>
+    </div>
+  );
+}
+
+/* ============ ROOT ============ */
+function App() {
+  const [route, setRoute] = useState(parseHash());
+  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState({country:'all',prodOnly:false,rndOnly:false,region:'all',segment:'all',area:'all',sort:'revenue'});
+  const [picked, setPicked] = useState([]);
+
+  useEffect(()=>{
+    const onHash = ()=>{ setRoute(parseHash()); window.scrollTo(0,0); };
+    window.addEventListener('hashchange', onHash);
+    return ()=>window.removeEventListener('hashchange', onHash);
+  },[]);
+
+  const navigate = useCallback((view, id)=>{
+    location.hash = view==='company' && id!=null ? `#/company/${id}` : `#/${view}`;
+  },[]);
+
+  const { view, id } = route;
+  const company = view==='company' ? DATA.find(c=>c.id===id) : null;
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Nav view={view} query={query} setQuery={setQuery} navigate={navigate} />
+      <main className="flex-1">
+        {view==='dashboard' && <Dashboard navigate={navigate} setQuery={setQuery} />}
+        {view==='catalog' && <Catalog navigate={navigate} query={query} setQuery={setQuery} filters={filters} setFilters={setFilters} />}
+        {view==='map' && <FullMap navigate={navigate} />}
+        {view==='compare' && <Compare navigate={navigate} picked={picked} setPicked={setPicked} />}
+        {view==='analytics' && <Analytics navigate={navigate} />}
+        {view==='glossary' && <Glossary />}
+        {view==='about' && <About />}
+        {view==='company' && (company ? <CompanyPage c={company} navigate={navigate} /> :
+          <div className="max-w-3xl mx-auto px-4 py-20 text-center text-slate2">Компания не найдена. <button onClick={()=>navigate('catalog')} className="text-teal underline">К каталогу</button></div>)}
+      </main>
+      <footer className="border-t border-slate-100 mt-12 py-8 no-print">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-mint to-sky flex items-center justify-center text-white font-display font-extrabold text-sm">Ф</div>
+            <span className="text-sm text-slate2"><b className="text-ink font-display">ФармаНавигатор</b> · справочник по фарм-отрасли России</span>
+          </div>
+          <nav className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate2">
+            {NAV.map(([k,l])=><button key={k} onClick={()=>navigate(k)} className="hover:text-teal">{l}</button>)}
+          </nav>
+        </div>
+        <p className="max-w-7xl mx-auto px-4 mt-4 text-xs text-slate-400">100 компаний · данные редактируются в companies-data.js · «н/д» = публично не раскрыто. Сборка июнь 2026, требует проверки перед профессиональным использованием.</p>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+
+</script>
+</body>
+</html>
