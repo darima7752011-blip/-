@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>ФармаНавигатор — справочник по фарм-отрасли России</title>
-<meta name="description" content="Справочник-навигатор по 100 крупнейшим фармацевтическим компаниям России: масштаб, города производств, виды препаратов, ключевые препараты, отзывы сотрудников и сравнение с Биокад." />
+<meta name="description" content="Справочник по 100 крупнейшим фармкомпаниям России: масштаб, города производств, виды и названия препаратов, реальные отзывы сотрудников (Dream Job) и сравнение с BIOCAD." />
 
 <!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
@@ -25,18 +25,18 @@
   tailwind.config = {
     theme: { extend: {
       fontFamily: { display:['Manrope','system-ui','sans-serif'], body:['Inter','system-ui','sans-serif'] },
-      colors: { ink:'#0f1f2e', slate2:'#64748b', mint:'#0fb5ba', teal:'#0e8f95', sky:'#1d9bf0', paper:'#f7f9fb' },
+      colors: { ink:'#15181d', slate2:'#64748b', mint:'#e2001a', teal:'#c0001a', sky:'#1d6fdb', paper:'#fafafa' },
     }},
   };
 </script>
 
 <style>
   html{scroll-behavior:smooth}
-  body{font-family:'Inter',sans-serif;background:#f7f9fb;color:#0f1f2e}
+  body{font-family:'Inter',sans-serif;background:#fafafa;color:#15181d}
   h1,h2,h3,h4{font-family:'Manrope',sans-serif;letter-spacing:-.02em}
   ::-webkit-scrollbar{width:10px;height:10px}
-  ::-webkit-scrollbar-thumb{background:#d7e0e6;border-radius:6px;border:3px solid #f7f9fb}
-  ::-webkit-scrollbar-thumb:hover{background:#c2cfd7}
+  ::-webkit-scrollbar-thumb{background:#dcdcdc;border-radius:6px;border:3px solid #fafafa}
+  ::-webkit-scrollbar-thumb:hover{background:#c4c4c4}
   .fade-in{animation:fade .3s ease both}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .expand{animation:exp .25s ease both}
@@ -44,14 +44,14 @@
   @media (prefers-reduced-motion: reduce){*{animation:none!important}html{scroll-behavior:auto}}
   details>summary{list-style:none;cursor:pointer}
   details>summary::-webkit-details-marker{display:none}
-  [tabindex]:focus-visible,a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #0fb5ba;outline-offset:2px;border-radius:8px}
+  [tabindex]:focus-visible,a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #e2001a;outline-offset:2px;border-radius:8px}
   @media print{header,footer,.no-print{display:none!important}body{background:#fff}}
-  mark{background:#cdeff0;color:inherit;padding:0 1px;border-radius:3px}
+  mark{background:#ffe0e3;color:inherit;padding:0 1px;border-radius:3px}
 </style>
 </head>
 <body>
 <div id="root">
-  <div style="max-width:640px;margin:90px auto;padding:0 24px;font-family:Manrope,system-ui;text-align:center;color:#0f1f2e">
+  <div style="max-width:640px;margin:90px auto;padding:0 24px;font-family:Manrope,system-ui;text-align:center;color:#15181d">
     <div style="font-size:40px">💊</div>
     <h1 style="font-size:22px;font-weight:800;margin:10px 0 8px">ФармаНавигатор загружается…</h1>
     <p style="color:#64748b;font-size:14px;line-height:1.6">Если за 10–15 сек. ничего не появилось — обновите страницу (F5).</p>
@@ -63,6 +63,39 @@ const { useState, useMemo, useEffect, useCallback } = React;
 
 const DATA = (window.PHARMA_COMPANIES || []).map((c, i) => ({ id: i, ...c }));
 const BASE = DATA.find(c => c.name === 'Биокад') || DATA[0];
+
+/* ============ РЕАЛЬНЫЕ ДАННЫЕ Dream Job (dreamjob.ru), собрано июнь 2026 ============
+   pct — % сотрудников, рекомендующих работодателя; n — число отзывов/оценок;
+   s/m/c — оценки 0–5: зарплата / руководство / карьера; url — страница на Dream Job.
+   Данные приведены по публичным агрегированным показателям Dream Job. */
+const DREAMJOB = {
+  'Биокад':            { pct:80.4, n:439, url:'https://dreamjob.ru/employers/29422' },
+  'Озон Фармацевтика': { pct:72,   n:168, s:4.14, m:3.72, c:3.55, url:'https://dreamjob.ru/employers/110918' },
+  'Биннофарм Групп':   { pct:71.9, n:96,  s:3.63, m:3.83, c:3.66, url:'https://dreamjob.ru/employers/118487' },
+  'Фармстандарт':      { pct:61.5, n:283, s:3.7,  m:3.4,  c:3.3,  url:'https://dreamjob.ru/employers/26144' },
+  'Фармасинтез':       { pct:61.6, n:263, s:3.6,  m:3.3,  c:3.3,  url:'https://dreamjob.ru/employers/49701' },
+  'Обновление (ПФК)':  { pct:87.8, n:205, s:4.38, m:4.4,  c:4.36, url:'https://dreamjob.ru/employers/40878' },
+  'Р-Фарм':            { pct:71.7, n:417, s:3.76, m:3.67, c:3.47, url:'https://dreamjob.ru/employers/44650' },
+  'ПромоМед':          { pct:82.4, n:34,  s:4.15, m:4.32, c:3.94, url:'https://dreamjob.ru/employers/108332' },
+  'Герофарм':          { pct:83.6, n:281, url:'https://dreamjob.ru/employers/31468' },
+  'Валента Фарм':      { pct:79.8, n:277, s:4.22, m:4.18, c:3.84, url:'https://dreamjob.ru/employers/29923' },
+  'Вертекс':           { n:229, c:3.37, url:'https://dreamjob.ru/employers/25451' },
+  'Гротекс (Solopharm)':{ pct:76, url:'https://dreamjob.ru/employers/55795' },
+  'Эвалар':            { pct:74.7, n:221, s:3.71, m:3.97, c:3.48, url:'https://dreamjob.ru/employers/51446' },
+  'Канонфарма':        { url:'https://dreamjob.ru/search?q=Канонфарма' },
+  'Акрихин':           { pct:74.3, n:136, s:3.82, m:3.82, c:3.43, url:'https://dreamjob.ru/employers/27308' },
+  'Нижфарм (STADA)':   { pct:69.2, n:182, s:3.77, m:3.58, c:3.25, url:'https://dreamjob.ru/employers/25774' },
+  'Bayer':             { pct:83.5, n:224, s:4.1,  m:3.9,  c:3.5,  url:'https://dreamjob.ru/employers/26111' },
+  'Servier':           { pct:57.1, n:7,   s:4.4,  m:3.3,  c:2.9,  url:'https://dreamjob.ru/employers/147587' },
+  'KRKA':              { n:322, url:'https://dreamjob.ru/employers/133507' },
+  'Novartis':          { pct:82, n:100, url:'https://dreamjob.ru/employers/22818' },
+  'Sanofi':            { pct:87, url:'https://dreamjob.ru/employers/25993' },
+  'AstraZeneca':       { pct:71.9, n:384, m:3.55, c:3.65, url:'https://dreamjob.ru/employers/98882' },
+  'Takeda':            { pct:82.7, n:110, s:4.28, m:4.15, c:3.45, url:'https://dreamjob.ru/employers/22846' },
+  'Gedeon Richter':    { pct:61.1, n:108, s:3.5,  m:3.4,  c:2.6,  url:'https://dreamjob.ru/employers/95741' },
+};
+const dj = (c)=> DREAMJOB[c.name] || null;
+const djSearch = (c)=> `https://dreamjob.ru/search?q=${encodeURIComponent(c.name)}`;
 
 /* ============ helpers ============ */
 const fmtRub = (v) => v == null ? "н/д" : v.toLocaleString('ru-RU') + " млрд ₽";
@@ -79,46 +112,6 @@ function highlight(text, q) {
   if (i < 0) return text;
   return <>{text.slice(0,i)}<mark>{text.slice(i,i+q.length)}</mark>{text.slice(i+q.length)}</>;
 }
-
-/* ============ отзывы сотрудников (обобщённые, выводятся из профиля) ============ */
-const REVIEW_OVERRIDES = {
-  'Биокад': { text:'Считается одной из лучших школ биотеха в России: реальные R&D-проекты, современное оборудование, международные амбиции. Сотрудники отмечают высокий темп и серьёзные требования, но и быстрый профессиональный рост.', pros:['Сильная наука и R&D','Карьерный рост','Современные лаборатории','Сильный бренд в резюме'], cons:['Высокая нагрузка и темп','Строгий отбор при найме'] },
-  'Р-Фарм': { text:'Крупный системообразующий игрок с широким спектром функций — от производства до клинических исследований. Стабильность и масштаб, но процессы крупной корпорации.', pros:['Масштаб и стабильность','Разнообразие функций','Международные проекты'], cons:['Корпоративная бюрократия','Зарплаты средние по рынку'] },
-  'ПромоМед': { text:'Динамичная компания с собственными разработками (метаболика, онкология). Отмечают интересные продукты и рост, но и высокую интенсивность.', pros:['Инновационный портфель','Рост и R&D','Молодая команда'], cons:['Высокая нагрузка','Процессы ещё формируются'] },
-  'Герофарм': { text:'Сильна в биотехнологии инсулинов полного цикла. Хорошая школа для биотехнолога, стабильность и современное производство.', pros:['Полный цикл биотеха','Стабильность','Современное производство'], cons:['Узкая специализация','Локации (Оболенск/Пушкин)'] },
-  'Биннофарм Групп': { text:'Большая группа (АФК «Система») с несколькими площадками. Стабильный работодатель с белым оформлением; масштаб даёт карьерные треки.', pros:['Масштаб группы','Стабильность','Белая зарплата'], cons:['Разрозненность площадок','Бюрократия'] },
-  'Озон Фармацевтика': { text:'Лидер по дженерикам, публичная компания. Чёткие процессы производства и QC, ориентир на эффективность.', pros:['Лидер рынка','Стабильность','Прозрачность (публичная)'], cons:['Меньше оригинального R&D','Фокус на объёмах'] },
-  'Генериум': { text:'Сильный биотех-центр полного цикла (орфанные, факторы свёртывания). Серьёзная наука, но удалённая локация (Вольгинский).', pros:['Глубокий R&D','Уникальные продукты'], cons:['Удалённая локация','Узкий рынок труда рядом'] },
-};
-function reviewFor(c){
-  if (REVIEW_OVERRIDES[c.name]) return REVIEW_OVERRIDES[c.name];
-  if (c.country==='Зарубеж') return {
-    text:'Международная школа: сильные стандарты, обучение, комплаенс и узнаваемый бренд в резюме. После 2022 многие глобальные компании сократили инвестиции и штат в РФ — меньше вакансий и больше неопределённости.',
-    pros:['Международные стандарты','Обучение и soft skills','Бренд в резюме'],
-    cons:['Сокращение присутствия в РФ','Почти нет локального R&D/производства','Неопределённость планов'] };
-  if (c.country==='СП') return {
-    text:'Локальное производство под крылом международной группы: стабильные процессы и узнаваемый бренд при российской производственной базе.',
-    pros:['Стабильность','Международные стандарты на производстве','Сильный бренд'],
-    cons:['Ограниченный R&D','Зависимость от головной компании'] };
-  const bio = c.segments.some(s=>['Биотех','Оригинальные','Вакцины'].includes(s));
-  const gov = /государ|госкорп|ниц|фгуп|фгбу/i.test((c.status||'')+(c.fullName||''));
-  if (gov) return {
-    text:'Государственная/научная структура: высокая стабильность и серьёзная научная база, но бюрократия и более медленные процессы.',
-    pros:['Высокая стабильность','Научная среда','Социальные гарантии'],
-    cons:['Бюрократия','Медленные процессы','Зарплаты ниже частного сектора'] };
-  if (c.hasRnD && bio) return {
-    text:'Российский производитель с реальными R&D-задачами и современным производством. Хорошая школа: интересные проекты при высокой нагрузке и серьёзных требованиях при найме.',
-    pros:['Реальный R&D','Карьерный рост','Современное оборудование'],
-    cons:['Высокая нагрузка','Высокие требования при найме'] };
-  if (c.hasRnD) return {
-    text:'Развивающаяся компания с производством и собственными разработками; белое оформление и фокус на качестве.',
-    pros:['Стабильность','Есть R&D-функции','Белая зарплата'],
-    cons:['Бюрократия','Зарплаты средние по рынку'] };
-  return {
-    text:'Производственный работодатель: стабильная занятость, понятные процессы, фокус на выпуске и контроле качества. Меньше науки и продуктовых инноваций.',
-    pros:['Стабильная занятость','Понятные процессы','Белое оформление'],
-    cons:['Мало R&D-вакансий','Рутинные задачи','Ограниченный карьерный потолок'] };
-}
 function compatWithBase(c){
   if (c.id===BASE.id) return null;
   let s=0;
@@ -128,22 +121,22 @@ function compatWithBase(c){
   if (c.segments.includes('Вакцины')) s+=1;
   const keys=['Онколог','Иммун','Аутоиммун','Инфекци','Гематолог'];
   if (c.therapeuticAreas.some(a=>keys.some(k=>a.includes(k)))) s+=1;
-  if (s>=4) return { level:'Высокая', tone:'green', text:'Кандидат из этой компании по профилю близок к Биокаду: схожий биотех/R&D-бэкграунд. Можно смело рассматривать.' };
-  if (s>=2) return { level:'Средняя', tone:'amber', text:'Частичное совпадение профиля с Биокадом. Кандидата стоит рассмотреть, но проверьте опыт в биотехе/R&D и релевантных терапевтических областях.' };
-  return { level:'Низкая', tone:'rose', text:'Профиль заметно отличается от Биокада (мало биотеха/R&D). Кандидат может требовать переобучения под задачи Биокада.' };
+  if (s>=4) return { level:'Высокая', tone:'green', text:'Профиль кандидата близок к BIOCAD: схожий биотех/R&D-опыт. Можно смело рассматривать.' };
+  if (s>=2) return { level:'Средняя', tone:'amber', text:'Частичное совпадение с BIOCAD. Стоит проверить опыт в биотехе/R&D и в релевантных терапевтических областях.' };
+  return { level:'Низкая', tone:'rose', text:'Профиль заметно отличается от BIOCAD (мало биотеха/R&D). Кандидат может требовать переобучения под задачи компании.' };
 }
 
 /* ============ tiny atoms ============ */
 function Tag({ children, tone='gray', onClick, title }) {
-  const tones = { mint:'bg-mint/10 text-teal', sky:'bg-sky/10 text-sky-700', gray:'bg-slate-100 text-slate-600',
+  const tones = { mint:'bg-mint/10 text-teal', sky:'bg-sky/10 text-sky', gray:'bg-slate-100 text-slate-600',
     green:'bg-emerald-50 text-emerald-700', amber:'bg-amber-50 text-amber-700', rose:'bg-rose-50 text-rose-600', ink:'bg-ink text-white' };
   const Cmp = onClick ? 'button' : 'span';
   return <Cmp onClick={onClick} title={title} className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full ${tones[tone]} ${onClick?'hover:opacity-80 transition':''}`}>{children}</Cmp>;
 }
 function CountryBadge({ country }) {
-  const map = { 'РФ':['green','Российская'], 'Зарубеж':['sky','Зарубежная'], 'СП':['amber','Совместная'] };
-  const [tone,label] = map[country] || ['gray', country];
-  return <Tag tone={tone}>{label}</Tag>;
+  const map = { 'РФ':['green','РФ','Российская компания'], 'Зарубеж':['sky','Зарубеж','Зарубежная компания'], 'СП':['amber','СП','Совместное предприятие'] };
+  const [tone,label,full] = map[country] || ['gray', country, country];
+  return <Tag tone={tone} title={full}>{label}</Tag>;
 }
 function RankBadge({ rank }) {
   if (!rank) return null;
@@ -163,18 +156,48 @@ function Block({ title, children, className }) {
     {children}
   </section>;
 }
+function DreamJob({ c, compact }) {
+  const d = dj(c);
+  if (!d) return (
+    <div className="text-sm text-slate-400">
+      Профиль на Dream Job не найден.{' '}
+      <a href={djSearch(c)} target="_blank" rel="noopener" className="text-teal hover:underline no-print">Искать на dreamjob.ru ↗</a>
+    </div>
+  );
+  const scores = [['Зарплата',d.s],['Руководство',d.m],['Карьера',d.c]].filter(x=>x[1]!=null);
+  return (
+    <div>
+      <div className="flex items-end gap-4 flex-wrap">
+        {d.pct!=null && <div><div className="text-3xl font-display font-extrabold text-teal leading-none">{d.pct}%</div><div className="text-xs text-slate2 mt-1">рекомендуют</div></div>}
+        {d.n!=null && <div><div className="text-2xl font-display font-extrabold leading-none">{d.n}</div><div className="text-xs text-slate2 mt-1">отзывов</div></div>}
+      </div>
+      {scores.length>0 && !compact && (
+        <div className="mt-3 space-y-1.5">
+          {scores.map(([l,v])=>(
+            <div key={l} className="flex items-center gap-2">
+              <span className="text-xs text-slate2 w-24 shrink-0">{l}</span>
+              <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-mint" style={{width:(v/5*100)+'%'}} /></div>
+              <span className="text-xs font-semibold w-8 text-right">{v.toFixed(1)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <a href={d.url} target="_blank" rel="noopener" className="inline-block text-sm text-teal font-medium hover:underline mt-3 no-print">Все отзывы на Dream Job ↗</a>
+    </div>
+  );
+}
 
 /* ============ routing ============ */
 function parseHash() {
   const h = (location.hash||'#/').replace(/^#/,'');
   const parts = h.split('/').filter(Boolean);
   if (parts[0]==='company' && parts[1]!=null) return { view:'company', id:Number(parts[1]) };
-  const known = ['catalog','compare','glossary','about'];
+  const known = ['catalog','compare','glossary','biocad'];
   return { view: known.includes(parts[0])?parts[0]:'catalog', id:null };
 }
 
 /* ============ NAV ============ */
-const NAV = [['catalog','Каталог'],['compare','Сравнение'],['glossary','Словарь'],['about','О проекте']];
+const NAV = [['catalog','Каталог'],['compare','Сравнение'],['glossary','Словарь'],['biocad','О BIOCAD']];
 function Nav({ view, query, setQuery, navigate }) {
   const [open, setOpen] = useState(false);
   const active = view==='company' ? 'catalog' : view;
@@ -182,7 +205,7 @@ function Nav({ view, query, setQuery, navigate }) {
     <header className="sticky top-0 z-[1000] bg-white/90 backdrop-blur-md border-b border-slate-200 no-print">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center gap-3">
         <button onClick={()=>navigate('catalog')} className="flex items-center gap-2 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center text-white font-display font-extrabold text-sm">Ф</div>
+          <div className="w-8 h-8 rounded-lg bg-mint flex items-center justify-center text-white font-display font-extrabold text-sm">Ф</div>
           <span className="font-display font-extrabold text-lg hidden sm:block">ФармаНавигатор</span>
         </button>
         <nav className="hidden md:flex items-center gap-0.5 ml-2">
@@ -219,7 +242,6 @@ function Nav({ view, query, setQuery, navigate }) {
 /* ============ COMPANY DETAIL (компактно, разворачивается на месте) ============ */
 function CompanyDetail({ c, showHeader, navigate }) {
   const cityList = cities(c);
-  const rev = reviewFor(c);
   const gmpCount = (c.factories||[]).filter(f=>f.gmp==='Да').length;
   const facts = [
     ['Происхождение', {'РФ':'Российская','Зарубеж':'Зарубежная','СП':'Совместная'}[c.country]||c.country],
@@ -227,9 +249,7 @@ function CompanyDetail({ c, showHeader, navigate }) {
     ['Заводов в РФ', (c.factories||[]).length||'—'],
     ['Площадок с GMP', gmpCount||'—'],
     ['Регионов', c.regions.length],
-    ['Сегментов', c.segments.length],
     ['Терапевт. областей', c.therapeuticAreas.length],
-    ['R&D в России', c.hasRnD?'Да':'Нет'],
   ];
   return (
     <div className="expand">
@@ -241,14 +261,13 @@ function CompanyDetail({ c, showHeader, navigate }) {
               <CountryBadge country={c.country} />
               <Tag tone="gray">{c.status}</Tag>
               {c.hasProductionInRussia && <Tag tone="green">Производство в РФ</Tag>}
-              {c.hasRnD && <Tag tone="sky">R&D в РФ</Tag>}
             </div>
           </div>
-          {c.website && <a href={c.website} target="_blank" rel="noopener" className="px-3 py-1.5 rounded-lg bg-ink text-white text-xs font-medium hover:opacity-90 no-print shrink-0">Сайт ↗</a>}
+          {c.website && <a href={c.website} target="_blank" rel="noopener" className="px-3 py-1.5 rounded-lg bg-mint text-white text-xs font-medium hover:opacity-90 no-print shrink-0">Официальный сайт ↗</a>}
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 mb-3">
         <StatCell value={fmtRub(c.revenue)} label={`Выручка в РФ · ${c.revenueYear}`} />
         <StatCell value={fmtNum(c.employeesRussia)} label="Сотрудники в РФ" />
         <StatCell value={fmtNum(c.employeesGlobal)} label="Сотрудники глобально" />
@@ -268,45 +287,22 @@ function CompanyDetail({ c, showHeader, navigate }) {
 
         <Block title="Профиль">
           <div className="text-[11px] text-slate-400 mb-1">Вид препаратов</div>
-          <div className="flex flex-wrap gap-1.5 mb-3">{c.segments.map(s=><Tag key={s} tone="gray">{s}</Tag>)}</div>
-          <div className="text-[11px] text-slate-400 mb-1">Регионы присутствия</div>
-          <div className="flex flex-wrap gap-1.5">{c.regions.map(r=><Tag key={r} tone="amber">{r}</Tag>)}</div>
+          <div className="flex flex-wrap gap-1.5 mb-2.5">{c.segments.map(s=><Tag key={s} tone="gray">{s}</Tag>)}</div>
+          <div className="text-[11px] text-slate-400 mb-1">R&D в России</div>
+          <div className="mb-2.5">{c.hasRnD ? <Tag tone="green">✓ Есть R&D в РФ</Tag> : <Tag tone="gray">Нет / не подтверждено</Tag>}</div>
+          {c.website && <div className="mb-2.5"><div className="text-[11px] text-slate-400 mb-1">Официальный сайт</div><a href={c.website} target="_blank" rel="noopener" className="text-sm text-teal hover:underline break-all no-print">{c.website.replace(/^https?:\/\//,'').replace(/\/$/,'')} ↗</a></div>}
         </Block>
 
-        <Block title={`Производство · ${cityList.length} ${cityList.length===1?'город':'городов'}`}>
-          {cityList.length ? (
-            <>
-              <div className="flex flex-wrap gap-1.5">{cityList.map(ct=><Tag key={ct} tone="gray">📍 {ct}</Tag>)}</div>
-              {(c.factories||[]).length>0 && (
-                <details className="mt-3 group">
-                  <summary className="text-xs font-medium text-teal hover:underline">Подробнее о площадках ▾</summary>
-                  <div className="mt-2 space-y-2">
-                    {c.factories.map((f,i)=>(
-                      <div key={i} className="border border-slate-100 rounded-lg p-2.5">
-                        <div className="text-sm font-semibold flex items-center justify-between gap-2"><span>{f.city}</span><Tag tone={f.gmp==='Да'?'green':'gray'}>GMP: {f.gmp}</Tag></div>
-                        <div className="text-xs text-slate2 mt-0.5">{f.products}</div>
-                      </div>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </>
-          ) : <div className="text-sm text-slate-400">Нет собственного производства в РФ — присутствие / импорт.</div>}
+        <Block title="Регионы присутствия и города">
+          <div className="text-[11px] text-slate-400 mb-1">Регионы</div>
+          <div className="flex flex-wrap gap-1.5 mb-2.5">{c.regions.map(r=><Tag key={r} tone="amber">{r}</Tag>)}</div>
+          <div className="text-[11px] text-slate-400 mb-1">Города производства</div>
+          {cityList.length ? <div className="flex flex-wrap gap-1.5">{cityList.map(ct=><Tag key={ct} tone="gray">📍 {ct}</Tag>)}</div>
+            : <div className="text-sm text-slate-400">нет производства в РФ</div>}
         </Block>
 
-        <Block title="Что говорят сотрудники" className="lg:col-span-2">
-          <p className="text-sm text-slate2 leading-relaxed">{rev.text}</p>
-          <div className="grid sm:grid-cols-2 gap-3 mt-3">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 mb-1.5">Плюсы</div>
-              <ul className="space-y-1">{rev.pros.map((p,i)=><li key={i} className="text-sm flex gap-1.5"><span className="text-emerald-500">+</span>{p}</li>)}</ul>
-            </div>
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-rose-500 mb-1.5">Минусы</div>
-              <ul className="space-y-1">{rev.cons.map((p,i)=><li key={i} className="text-sm flex gap-1.5"><span className="text-rose-400">−</span>{p}</li>)}</ul>
-            </div>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-2.5">Обобщённое мнение о типе работодателя, а не верифицированный отзыв конкретных сотрудников.</p>
+        <Block title="Отзывы сотрудников · Dream Job" className="lg:col-span-2">
+          <DreamJob c={c} />
         </Block>
 
         <Block title="Факты о компании">
@@ -316,6 +312,20 @@ function CompanyDetail({ c, showHeader, navigate }) {
         </Block>
       </div>
 
+      {(c.factories||[]).length>0 && (
+        <details className="mt-3 bg-white border border-slate-200 rounded-xl p-4 group">
+          <summary className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">Производственные площадки ({c.factories.length})<span className="text-mint text-base group-open:rotate-45 transition">+</span></summary>
+          <div className="mt-3 grid sm:grid-cols-2 gap-2.5">
+            {c.factories.map((f,i)=>(
+              <div key={i} className="border border-slate-100 rounded-lg p-3">
+                <div className="text-sm font-semibold flex items-center justify-between gap-2"><span>📍 {f.city}</span><Tag tone={f.gmp==='Да'?'green':'gray'}>GMP: {f.gmp}</Tag></div>
+                <div className="text-xs text-slate2 mt-1">{f.products}</div>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
       {c.note && (
         <details className="mt-3 bg-white border border-slate-200 rounded-xl p-4 group">
           <summary className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">Ключевые события<span className="text-mint text-base group-open:rotate-45 transition">+</span></summary>
@@ -323,16 +333,16 @@ function CompanyDetail({ c, showHeader, navigate }) {
         </details>
       )}
 
-      {navigate && (
+      {navigate && c.id!==BASE.id && (
         <div className="mt-3 no-print">
-          <button onClick={()=>navigate('compare',null,c.id)} className="text-sm text-teal font-medium hover:underline">Сравнить с Биокад →</button>
+          <button onClick={()=>navigate('compare',null,c.id)} className="text-sm text-teal font-medium hover:underline">Сравнить с BIOCAD →</button>
         </div>
       )}
     </div>
   );
 }
 
-/* ============ FILTERS SIDEBAR ============ */
+/* ============ FILTERS (всегда открыты) ============ */
 function Filters({ filters, setFilters, query, setQuery, count }) {
   const { country, prodOnly, rndOnly, region, segment, area } = filters;
   const set = (k,v)=> setFilters({...filters,[k]:v});
@@ -352,7 +362,7 @@ function Filters({ filters, setFilters, query, setQuery, count }) {
         {dirty && <button onClick={reset} className="text-xs text-slate-400 hover:text-ink underline">сбросить</button>}
       </div>
       <Sel value={country} onChange={v=>set('country',v)} label="Происхождение">
-        <option value="all">Все</option><option value="РФ">Российские</option><option value="Зарубеж">Зарубежные</option><option value="СП">Совместные</option>
+        <option value="all">Все</option><option value="РФ">РФ</option><option value="Зарубеж">Зарубеж</option><option value="СП">СП</option>
       </Sel>
       <Sel value={segment} onChange={v=>set('segment',v)} label="Вид препаратов">
         <option value="all">Все виды</option>{ALL_SEGMENTS.map(s=><option key={s} value={s}>{s}</option>)}
@@ -376,7 +386,6 @@ function Filters({ filters, setFilters, query, setQuery, count }) {
 function Catalog({ navigate, query, setQuery, filters, setFilters, layout, setLayout, expandedId, setExpandedId }) {
   const { country, prodOnly, rndOnly, region, segment, area, sort } = filters;
   const set = (k,v)=> setFilters({...filters,[k]:v});
-  const [showFilters, setShowFilters] = useState(false);
 
   const filtered = useMemo(()=>{
     let list = DATA.filter(c=>{
@@ -403,9 +412,9 @@ function Catalog({ navigate, query, setQuery, filters, setFilters, layout, setLa
   },[query,country,prodOnly,rndOnly,region,segment,area,sort]);
 
   const exportCSV = ()=>{
-    const head = ['Название','Полное название','Происхождение','Вид препаратов','Города производства','Регионы','Выручка РФ (млрд ₽)','Сотрудники РФ','Терапевт. области','Ключевые препараты','R&D в РФ','Сайт'];
-    const rows = filtered.map(c=>[c.name,c.fullName,c.country,c.segments.join('; '),cities(c).join('; '),c.regions.join('; '),c.revenue??'',c.employeesRussia,c.therapeuticAreas.join('; '),c.keyProducts.join('; '),c.hasRnD?'Да':'Нет',c.website||'']
-      .map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+    const head = ['Название','Полное название','Происхождение','Вид препаратов','R&D в РФ','Сотрудники РФ','Города производства','Регионы','Выручка РФ (млрд ₽)','Терапевт. области','Ключевые препараты','Сайт','Dream Job % рекоменд.','Dream Job отзывов'];
+    const rows = filtered.map(c=>{ const d=dj(c)||{}; return [c.name,c.fullName,c.country,c.segments.join('; '),c.hasRnD?'Да':'Нет',c.employeesRussia,cities(c).join('; '),c.regions.join('; '),c.revenue??'',c.therapeuticAreas.join('; '),c.keyProducts.join('; '),c.website||'',d.pct??'',d.n??'']
+      .map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','); });
     const csv = '﻿'+[head.join(','),...rows].join('\n');
     const url = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
     const a = document.createElement('a'); a.href=url; a.download='pharma-companies.csv'; a.click(); URL.revokeObjectURL(url);
@@ -417,17 +426,12 @@ function Catalog({ navigate, query, setQuery, filters, setFilters, layout, setLa
     <div className="max-w-7xl mx-auto px-4 py-6 fade-in">
       <div className="mb-6">
         <h1 className="text-2xl md:text-3xl font-display font-extrabold">Справочник фарм-компаний России</h1>
-        <p className="text-slate2 mt-1.5 max-w-2xl text-sm">100 крупнейших игроков отрасли. Фильтры — слева, клик по компании раскрывает подробную карточку прямо в списке.</p>
+        <p className="text-slate2 mt-1.5 max-w-2xl text-sm">100 крупнейших игроков отрасли. Клик по компании раскрывает подробную карточку прямо в списке — с реальными отзывами сотрудников по Dream Job.</p>
       </div>
 
       <div className="lg:grid lg:grid-cols-[250px_1fr] lg:gap-6 items-start">
-        <aside className="lg:sticky lg:top-20">
-          <button onClick={()=>setShowFilters(!showFilters)} className="lg:hidden w-full mb-3 px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-medium flex items-center justify-between">
-            Фильтры <span className="text-slate-400">{showFilters?'▲':'▼'}</span>
-          </button>
-          <div className={`${showFilters?'block':'hidden'} lg:block bg-white border border-slate-200 rounded-xl p-4 mb-4 lg:mb-0`}>
-            <Filters filters={filters} setFilters={setFilters} query={query} setQuery={setQuery} count={filtered.length} />
-          </div>
+        <aside className="lg:sticky lg:top-20 bg-white border border-slate-200 rounded-xl p-4 mb-4 lg:mb-0">
+          <Filters filters={filters} setFilters={setFilters} query={query} setQuery={setQuery} count={filtered.length} />
         </aside>
 
         <div>
@@ -445,12 +449,9 @@ function Catalog({ navigate, query, setQuery, filters, setFilters, layout, setLa
               <button onClick={exportCSV} className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium hover:border-mint flex items-center gap-1.5" title="Скачать CSV">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>CSV
               </button>
-              <label className="flex items-center gap-1.5 text-sm">
-                <span className="text-slate-400 hidden sm:inline">Сорт.</span>
-                <select value={sort} onChange={e=>set('sort',e.target.value)} className="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
-                  <option value="revenue">По выручке</option><option value="rank">По Forbes</option><option value="employees">По сотрудникам</option><option value="factories">По числу городов</option><option value="name">По названию</option>
-                </select>
-              </label>
+              <select value={sort} onChange={e=>set('sort',e.target.value)} className="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
+                <option value="revenue">По выручке</option><option value="rank">По Forbes</option><option value="employees">По сотрудникам</option><option value="factories">По числу городов</option><option value="name">По названию</option>
+              </select>
             </div>
           </div>
 
@@ -467,31 +468,32 @@ function Catalog({ navigate, query, setQuery, filters, setFilters, layout, setLa
                     <span className="font-display font-bold group-hover:text-teal transition">{highlight(c.name,query)}</span>
                     {c.marketRank && <RankBadge rank={c.marketRank} />}
                   </div>
-                  <div className="mt-1.5"><CountryBadge country={c.country} /></div>
-                  <div className="mt-3 text-sm font-semibold">{fmtRub(c.revenue)}</div>
-                  <div className="text-xs text-slate-400">выручка в РФ</div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">{c.segments.slice(0,3).map(s=><Tag key={s} tone="gray">{s}</Tag>)}{c.segments.length>3 && <Tag tone="gray">+{c.segments.length-3}</Tag>}</div>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5"><CountryBadge country={c.country} />{c.hasRnD && <Tag tone="mint">R&D</Tag>}</div>
+                  <div className="mt-3 text-sm font-semibold">{fmtRub(c.revenue)}<span className="text-xs font-normal text-slate-400"> · выручка</span></div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">{c.segments.slice(0,3).map(s=><Tag key={s} tone="gray">{s}</Tag>)}{c.segments.length>3 && <Tag tone="gray">+{c.segments.length-3}</Tag>}</div>
+                  {dj(c)&&dj(c).pct!=null && <div className="mt-2 text-xs text-teal font-medium">Dream Job: {dj(c).pct}% рекомендуют</div>}
                 </button>
               ))}
             </div>
           ) : (
             <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-              <div className="hidden md:grid grid-cols-[1fr_16rem_8.5rem_2rem] gap-4 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-200 bg-slate-50/70">
-                <div>Компания</div><div>Вид препаратов</div><div className="text-right">Выручка в РФ</div><div></div>
+              <div className="hidden md:grid grid-cols-[1fr_13rem_7rem_8rem_2rem] gap-4 px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-200 bg-slate-50/70">
+                <div>Компания</div><div>Вид препаратов</div><div className="text-right">Сотрудники РФ</div><div className="text-right">Выручка в РФ</div><div></div>
               </div>
               {filtered.map(c=>{
                 const open = expandedId===c.id;
                 return (
                   <div key={c.id} className="border-b border-slate-100 last:border-0">
                     <button onClick={()=>toggle(c.id)} aria-expanded={open}
-                      className={`text-left w-full px-4 py-3.5 grid grid-cols-1 md:grid-cols-[1fr_16rem_8.5rem_2rem] gap-2 md:gap-4 md:items-center group transition ${open?'bg-mint/5':'hover:bg-slate-50'}`}>
+                      className={`text-left w-full px-4 py-3.5 grid grid-cols-1 md:grid-cols-[1fr_13rem_7rem_8rem_2rem] gap-2 md:gap-4 md:items-center group transition ${open?'bg-mint/5':'hover:bg-slate-50'}`}>
                       <div className="flex items-center gap-2 flex-wrap min-w-0">
                         <span className="font-display font-bold text-ink group-hover:text-teal transition">{highlight(c.name,query)}</span>
                         <CountryBadge country={c.country} />
                         {c.marketRank && <RankBadge rank={c.marketRank} />}
                       </div>
                       <div className="flex flex-wrap gap-1.5 content-center">{c.segments.map(s=><Tag key={s} tone="gray">{s}</Tag>)}</div>
-                      <div className="md:text-right"><div className="text-sm font-bold text-ink">{fmtRub(c.revenue)}</div><div className="text-xs text-slate-400">{fmtNum(c.employeesRussia)} чел. в РФ</div></div>
+                      <div className="md:text-right text-sm font-semibold">{fmtNum(c.employeesRussia)}</div>
+                      <div className="md:text-right text-sm font-bold text-ink">{fmtRub(c.revenue)}</div>
                       <svg className={`hidden md:block w-4 h-4 shrink-0 transition ${open?'rotate-90 text-teal':'text-slate-300 group-hover:text-teal'}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
                     </button>
                     {open && (
@@ -525,7 +527,7 @@ function CompanyPage({ c, navigate }) {
         </div>
       </div>
       <div className="bg-white border border-slate-200 rounded-xl p-5 relative overflow-hidden mb-4">
-        <div className="absolute inset-x-0 top-0 h-1" style={{background:c.logoColor||'#0fb5ba'}} />
+        <div className="absolute inset-x-0 top-0 h-1" style={{background:c.logoColor||'#e2001a'}} />
         <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-2xl md:text-3xl font-display font-extrabold">{c.name}</h1>
           {c.marketRank && <RankBadge rank={c.marketRank} />}
@@ -536,7 +538,7 @@ function CompanyPage({ c, navigate }) {
   );
 }
 
-/* ============ COMPARE (на базе Биокад) ============ */
+/* ============ COMPARE (на базе BIOCAD) ============ */
 function Compare({ navigate, selId, setSelId }) {
   const [q,setQ]=useState('');
   const sel = DATA.find(c=>c.id===selId) || null;
@@ -547,15 +549,16 @@ function Compare({ navigate, selId, setSelId }) {
     ['Вид препаратов', c=>c.segments.join(', ')],
     ['Терапевт. области', c=>c.therapeuticAreas.join(', ')],
     ['R&D в России', c=>c.hasRnD?'Да':'Нет'],
-    ['Производство в РФ', c=>c.hasProductionInRussia?'Да':'Нет'],
     ['Города производства', c=>cities(c).join(', ')||'н/д'],
     ['Выручка в РФ, млрд ₽', c=>c.revenue==null?'н/д':c.revenue.toLocaleString('ru-RU')],
     ['Сотрудники в РФ', c=>fmtNum(c.employeesRussia)],
     ['Ключевые препараты', c=>c.keyProducts.join(', ')],
+    ['Dream Job: рекомендуют', c=>{const d=dj(c); return d&&d.pct!=null?d.pct+'%':'н/д';}],
+    ['Dream Job: отзывов', c=>{const d=dj(c); return d&&d.n!=null?d.n:'н/д';}],
   ];
   const Col = ({c, head}) => (
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-slate-100" style={{boxShadow:`inset 0 3px 0 ${c.logoColor||'#0fb5ba'}`}}>
+      <div className="p-4 border-b border-slate-100" style={{boxShadow:`inset 0 3px 0 ${c.logoColor||'#e2001a'}`}}>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-display font-extrabold text-lg">{c.name}</span>
           {head && <Tag tone="mint">эталон</Tag>}
@@ -564,17 +567,16 @@ function Compare({ navigate, selId, setSelId }) {
         <div className="text-xs text-slate2 mt-1">{c.fullName}</div>
       </div>
       <div className="p-4">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Что говорят сотрудники</div>
-        <p className="text-sm text-slate2 leading-relaxed">{reviewFor(c).text}</p>
-        <button onClick={()=>navigate('company',c.id)} className="text-sm text-teal font-medium hover:underline mt-3 no-print">Полная карточка →</button>
+        <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Отзывы сотрудников · Dream Job</div>
+        <DreamJob c={c} compact />
       </div>
     </div>
   );
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6 fade-in">
-      <h1 className="text-2xl md:text-3xl font-display font-extrabold">Сравнение с Биокад</h1>
-      <p className="text-slate2 text-sm mt-1.5 max-w-2xl">Биокад — эталон современного биотеха полного цикла. Выберите компанию, чтобы понять, насколько кандидат с таким опытом подойдёт под профиль Биокада.</p>
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">Сравнение с BIOCAD</h1>
+      <p className="text-slate2 text-sm mt-1.5 max-w-2xl">BIOCAD — эталон современного биотеха полного цикла. Выберите компанию, чтобы понять, насколько кандидат с таким опытом подойдёт под профиль BIOCAD.</p>
 
       <div className="relative mt-5 max-w-md">
         <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Выберите или найдите компанию…"
@@ -600,9 +602,7 @@ function Compare({ navigate, selId, setSelId }) {
       {sel ? (
         <>
           <div className={`mt-6 rounded-xl p-4 border ${compat.tone==='green'?'bg-emerald-50 border-emerald-200':compat.tone==='amber'?'bg-amber-50 border-amber-200':'bg-rose-50 border-rose-200'}`}>
-            <div className="flex items-center gap-2">
-              <span className={`text-sm font-bold ${compat.tone==='green'?'text-emerald-700':compat.tone==='amber'?'text-amber-700':'text-rose-700'}`}>Совместимость с Биокад: {compat.level}</span>
-            </div>
+            <div className={`text-sm font-bold ${compat.tone==='green'?'text-emerald-700':compat.tone==='amber'?'text-amber-700':'text-rose-700'}`}>Совместимость с BIOCAD: {compat.level}</div>
             <p className="text-sm text-slate2 mt-1.5">{compat.text}</p>
           </div>
 
@@ -629,13 +629,74 @@ function Compare({ navigate, selId, setSelId }) {
               </tbody>
             </table>
           </div>
-          <p className="text-[11px] text-slate-400 mt-2">Отзывы — обобщённое представление о типе работодателя, не верифицированные мнения конкретных сотрудников.</p>
+          <p className="text-[11px] text-slate-400 mt-2">Показатели отзывов — публичные агрегированные данные Dream Job (dreamjob.ru), июнь 2026; малое число отзывов снижает их репрезентативность.</p>
         </>
       ) : (
         <div className="mt-6 bg-white border border-slate-200 rounded-xl p-12 text-center text-slate2">
-          Выберите компанию выше, чтобы сравнить её с Биокад.
+          Выберите компанию выше, чтобы сравнить её с BIOCAD.
         </div>
       )}
+    </div>
+  );
+}
+
+/* ============ О BIOCAD (для рекрутера) ============ */
+function BiocadPage({ navigate }) {
+  const pitch = [
+    'Полный цикл «от молекулы до готового препарата» — кандидат увидит весь путь разработки, а не один узкий участок.',
+    'Сильная наука: ~1/3 штата — учёные и исследователи, 40+ лабораторий. Это работодатель, где реально занимаются R&D.',
+    'Инновации мирового уровня: в 2024 г. зарегистрирован сенипрутуг — первый в мире препарат для лечения болезни Бехтерева.',
+    'Международная компания: офисы в ОАЭ, Китае, Бразилии, Вьетнаме; экспансия в ЮВА, MENAT, LATAM — есть международные карьерные треки.',
+    'Фокус на социально значимых областях: онкология, аутоиммунные и наследственные заболевания.',
+    'Высокая оценка сотрудников: 80,4% рекомендуют компанию (439 отзывов на Dream Job).',
+  ];
+  const facts = [
+    ['Основана','2001 год'],
+    ['Штаб-квартира','Санкт-Петербург (Стрельна)'],
+    ['Сотрудники','более 2 700, ~1/3 — учёные'],
+    ['R&D','40+ лабораторий, 7 производственных комплексов'],
+    ['Портфель','~55 препаратов, ~1/5 — оригинальные'],
+    ['Области','онкология, аутоиммунные, наследственные'],
+  ];
+  return (
+    <div className="fade-in">
+      <section className="bg-mint text-white">
+        <div className="max-w-5xl mx-auto px-4 py-12">
+          <div className="text-sm font-semibold uppercase tracking-wider opacity-80">Гид для рекрутера</div>
+          <h1 className="text-3xl md:text-5xl font-display font-extrabold mt-2">BIOCAD</h1>
+          <p className="mt-3 text-lg max-w-2xl opacity-95">Международная инновационная биотехнологическая компания полного цикла — как рассказать о ней кандидату и какие преимущества подчеркнуть.</p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button onClick={()=>navigate('company',BASE.id)} className="px-5 py-2.5 rounded-xl bg-white text-mint font-semibold hover:opacity-90">Карточка в каталоге →</button>
+            <a href="https://biocad.ru/" target="_blank" rel="noopener" className="px-5 py-2.5 rounded-xl bg-white/15 text-white font-semibold hover:bg-white/25 no-print">biocad.ru ↗</a>
+          </div>
+        </div>
+      </section>
+
+      <div className="max-w-5xl mx-auto px-4 py-8 grid lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 space-y-4">
+          <Block title="Как презентовать кандидату — ключевые преимущества">
+            <ul className="space-y-2.5">
+              {pitch.map((p,i)=>(<li key={i} className="flex gap-2.5 text-sm"><span className="text-mint font-bold">✓</span><span>{p}</span></li>))}
+            </ul>
+          </Block>
+          <Block title="Что говорят сотрудники · Dream Job">
+            <DreamJob c={BASE} />
+            <p className="text-sm text-slate2 mt-3">Среди плюсов сотрудники отмечают развитую корпоративную культуру, соцпакет (ДМС со стоматологией, питание, развозка) и обучение; среди минусов — высокий темп и нагрузку, бюрократию и местами устаревшее оборудование.</p>
+          </Block>
+        </div>
+        <div className="space-y-4">
+          <Block title="Факты о компании">
+            <dl className="space-y-2.5">
+              {facts.map(([l,v],i)=>(<div key={i}><dt className="text-[11px] text-slate-400">{l}</dt><dd className="font-semibold text-sm">{v}</dd></div>))}
+            </dl>
+          </Block>
+          <Block title="Подсказка рекрутеру">
+            <p className="text-sm text-slate2">Кандидаты из BIOCAD ценят масштабные R&D-задачи и научную среду. Ищете похожий профиль — на вкладке «Сравнение» проверьте совместимость другой компании с BIOCAD.</p>
+            <button onClick={()=>navigate('compare')} className="text-sm text-teal font-medium hover:underline mt-2 no-print">Перейти к сравнению →</button>
+          </Block>
+        </div>
+      </div>
+      <p className="max-w-5xl mx-auto px-4 pb-8 text-[11px] text-slate-400">Данные о BIOCAD приведены из публичных источников (biocad.ru, отчёт об устойчивом развитии 2024, Dream Job) и требуют проверки. Проект не аффилирован с компанией.</p>
     </div>
   );
 }
@@ -643,6 +704,13 @@ function Compare({ navigate, selId, setSelId }) {
 /* ============ GLOSSARY ============ */
 const GLOSSARY = [
   ['GMP','Good Manufacturing Practice — надлежащая производственная практика. Международный стандарт качества и безопасности производства лекарств. Сертификат GMP — обязательное условие для легального выпуска препаратов.'],
+  ['Цикл разработки лекарства','Путь препарата: поиск мишени и молекулы → доклинические исследования (на клетках и животных) → клинические исследования фаз I–III на людях → регистрация и получение РУ → выпуск и пострегистрационный надзор (фаза IV). В среднем занимает 10–15 лет и миллиарды рублей; до рынка доходят единицы молекул из тысяч.'],
+  ['Фазы клинических исследований','Фаза I — безопасность на небольшой группе (часто здоровые добровольцы); фаза II — эффективность и подбор доз на пациентах; фаза III — крупные сравнительные исследования перед регистрацией; фаза IV — наблюдение уже после выхода на рынок.'],
+  ['Доклинические исследования','Изучение препарата в лаборатории и на животных до испытаний на людях: токсичность, фармакокинетика, безопасность. Обязательный этап перед клиническими исследованиями.'],
+  ['Минздрав России','Министерство здравоохранения РФ — регистрирует лекарства (выдаёт регистрационное удостоверение), утверждает перечни (ЖНВЛП) и правила обращения лекарственных средств.'],
+  ['Росздравнадзор','Федеральная служба по надзору в сфере здравоохранения — контроль качества лекарств на рынке, фармаконадзор, проверки производителей, изъятие недоброкачественных серий.'],
+  ['НЦЭСМП','ФГБУ «Научный центр экспертизы средств медицинского применения» Минздрава — проводит экспертизу качества, эффективности и безопасности препаратов при их регистрации.'],
+  ['FDA / EMA','Зарубежные регуляторы: FDA (США) и EMA (Евросоюз) выдают разрешения на лекарства на своих рынках и задают мировые стандарты. В ЕАЭС действует собственная процедура регистрации.'],
   ['Дженерик','Воспроизведённый аналог оригинального препарата с тем же действующим веществом, выпускаемый после истечения патента. Дешевле оригинала, биоэквивалентен ему.'],
   ['Оригинальный препарат','Лекарство, впервые разработанное и выведенное на рынок компанией-разработчиком; защищено патентом. Требует полного цикла клинических исследований.'],
   ['Биоаналог (биосимиляр)','Аналог биологического (например, белкового) препарата. В отличие от химического дженерика, не идентичен, а «подобен» оригиналу из-за сложности биопроизводства.'],
@@ -657,9 +725,8 @@ const GLOSSARY = [
   ['OTC / безрецептурные','Over-the-counter — препараты, отпускаемые без рецепта (от простуды, витамины, анальгетики). Продаются напрямую потребителю.'],
   ['Rx / рецептурные','Препараты, отпускаемые только по рецепту врача. Продвигаются через медицинских представителей, а не прямую рекламу.'],
   ['Пайплайн','Портфель препаратов компании на разных стадиях разработки и регистрации — показатель будущего роста.'],
-  ['Клинические исследования (КИ)','Этапы проверки эффективности и безопасности препарата на людях (фазы I–III) перед регистрацией. Ключевая функция для R&D-компаний.'],
   ['Фармаконадзор','Система мониторинга безопасности лекарств после выхода на рынок (сбор данных о побочных эффектах). Обязательна для каждого производителя.'],
-  ['ЕАЭС','Единый рынок лекарств Евразийского экономического союза. Регистрация по правилам ЕАЭС открывает доступ сразу в несколько стран.'],
+  ['ЕАЭС (регистрация)','Единая процедура регистрации лекарств в Евразийском экономическом союзе — одно досье открывает доступ на рынки стран-участниц.'],
 ];
 function Glossary() {
   const [q,setQ]=useState('');
@@ -667,7 +734,7 @@ function Glossary() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 fade-in">
       <h1 className="text-2xl md:text-3xl font-display font-extrabold">Словарь терминов</h1>
-      <p className="text-slate2 text-sm mt-1.5">«Фарма для новичка» — базовые понятия для входа в отрасль</p>
+      <p className="text-slate2 text-sm mt-1.5">«Фарма для новичка» — базовые понятия, цикл разработки лекарств и регуляторы</p>
       <div className="relative mt-4">
         <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Найти термин…"
           className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-mint/40" />
@@ -681,31 +748,6 @@ function Glossary() {
           </details>
         ))}
         {list.length===0 && <p className="text-slate-400 text-center py-8">Термин не найден.</p>}
-      </div>
-    </div>
-  );
-}
-
-/* ============ ABOUT ============ */
-function About() {
-  return (
-    <div className="max-w-3xl mx-auto px-4 py-6 fade-in">
-      <h1 className="text-2xl md:text-3xl font-display font-extrabold">О проекте</h1>
-      <div className="mt-5 space-y-3 text-slate2 leading-relaxed">
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <h3 className="font-display font-bold text-ink mb-2">Назначение</h3>
-          <p>Справочник-навигатор по 100 крупнейшим фармацевтическим компаниям с производством или присутствием в России — для быстрого входа рекрутера в отрасль: масштаб, города производств, виды и названия препаратов, отзывы о работодателях и сравнение с Биокад.</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <h3 className="font-display font-bold text-ink mb-2">Методология и данные</h3>
-          <p>Финансы и рейтинг — по Forbes и AlphaRM / RNC Pharma (2025). Сведения о заводах, городах, видах и названиях препаратов — из публичных источников. Где данные не раскрыты, стоит «н/д».</p>
-          <p className="mt-2"><b>Отзывы сотрудников</b> — это обобщённое представление о типе работодателя (по происхождению, наличию R&D, сегментам), а не верифицированные мнения конкретных людей. Используйте их как ориентир, а не как факт.</p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-xl p-5">
-          <h3 className="font-display font-bold text-ink mb-2">Как дополнять справочник</h3>
-          <p>Данные о компаниях — в файле <code className="bg-slate-100 px-1.5 py-0.5 rounded text-sm">companies-data.js</code>. Скопируйте любой блок, вставьте в конец списка и замените значения — фильтры, список, сравнение и экспорт обновятся автоматически.</p>
-        </div>
-        <p className="text-sm text-slate-400">Данные приведены в иллюстративных целях и требуют проверки перед профессиональным использованием. Сборка: июнь 2026.</p>
       </div>
     </div>
   );
@@ -741,7 +783,7 @@ function App() {
         {view==='catalog' && <Catalog navigate={navigate} query={query} setQuery={setQuery} filters={filters} setFilters={setFilters} layout={layout} setLayout={setLayout} expandedId={expandedId} setExpandedId={setExpandedId} />}
         {view==='compare' && <Compare navigate={navigate} selId={compareSel} setSelId={setCompareSel} />}
         {view==='glossary' && <Glossary />}
-        {view==='about' && <About />}
+        {view==='biocad' && <BiocadPage navigate={navigate} />}
         {view==='company' && (company ? <CompanyPage c={company} navigate={navigate} /> :
           <div className="max-w-3xl mx-auto px-4 py-20 text-center text-slate2">Компания не найдена. <button onClick={()=>navigate('catalog')} className="text-teal underline">К каталогу</button></div>)}
       </main>
@@ -752,7 +794,7 @@ function App() {
             {NAV.map(([k,l])=><button key={k} onClick={()=>navigate(k)} className="hover:text-teal">{l}</button>)}
           </nav>
         </div>
-        <p className="max-w-7xl mx-auto px-4 mt-3 text-xs text-slate-400">100 компаний · данные в companies-data.js · «н/д» = публично не раскрыто · отзывы обобщённые. Сборка июнь 2026.</p>
+        <p className="max-w-7xl mx-auto px-4 mt-3 text-xs text-slate-400">100 компаний · данные в companies-data.js · отзывы — публичные агрегированные показатели Dream Job (dreamjob.ru), «н/д» = нет данных. Проект не аффилирован с упомянутыми компаниями. Сборка июнь 2026, требует проверки.</p>
       </footer>
     </div>
   );
