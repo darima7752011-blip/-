@@ -127,6 +127,105 @@ function compatWithBase(c){
   return { level:'Низкая', tone:'rose', text:'Профиль заметно отличается от BIOCAD (мало биотеха/R&D). Кандидат может требовать переобучения под задачи компании.' };
 }
 
+/* ============ РЫНОК ТРУДА: зарплаты (ориентир, ₽/мес брутто) и дефицит ролей ============
+   Диапазоны — ориентировочные, по публичным обзорам рынка (hh.ru, кадровые
+   агентства, 2025–2026). Это справочный ориентир, а не оффер; реальная вилка
+   зависит от грейда, бонусов и компании. */
+const SALARY = [
+  { role:'Медицинский представитель', dir:'Продажи и продвижение', msk:[110,180], spb:[90,150], reg:[70,120] },
+  { role:'КАМ (key account manager)', dir:'Продажи и продвижение', msk:[180,300], spb:[150,250], reg:[120,200] },
+  { role:'Региональный менеджер продаж', dir:'Продажи и продвижение', msk:[220,380], spb:[180,300], reg:[150,260] },
+  { role:'Медицинский советник (MSL)', dir:'Медицина', msk:[200,350], spb:[170,280], reg:[140,230] },
+  { role:'Менеджер по регистрации (RA)', dir:'Регистрация', msk:[150,260], spb:[130,220], reg:[100,180] },
+  { role:'Специалист по фармаконадзору', dir:'Регистрация', msk:[130,230], spb:[110,200], reg:[90,160] },
+  { role:'Специалист QC (контроль качества)', dir:'Качество', msk:[90,160], spb:[80,140], reg:[60,110] },
+  { role:'Специалист QA / валидация', dir:'Качество', msk:[130,230], spb:[110,190], reg:[85,150] },
+  { role:'Уполномоченный по качеству (QP)', dir:'Качество', msk:[250,450], spb:[200,380], reg:[170,300] },
+  { role:'Учёный / исследователь R&D', dir:'R&D и наука', msk:[150,300], spb:[130,260], reg:[100,200] },
+  { role:'Биотехнолог', dir:'R&D и наука', msk:[130,250], spb:[110,210], reg:[90,170] },
+  { role:'Биостатистик', dir:'R&D и наука', msk:[200,380], spb:[170,320], reg:[140,260] },
+  { role:'Менеджер клин. исследований (CRA)', dir:'Клинические исследования', msk:[160,300], spb:[140,260], reg:[110,210] },
+  { role:'Оператор / аппаратчик производства', dir:'Производство', msk:[70,120], spb:[60,110], reg:[50,90] },
+];
+const SCARCITY = [
+  { role:'Уполномоченный по качеству (QP)', level:'Высокий', overpay:true,  why:'Мало аттестованных специалистов, жёсткие требования закона — закрывается долго.' },
+  { role:'Биостатистик', level:'Высокий', overpay:true, why:'Единицы на рынке, критичны для клинических исследований и регистрации.' },
+  { role:'Специалист по валидации (QA)', level:'Высокий', overpay:true, why:'Рост локализации и новых линий — спрос превышает предложение.' },
+  { role:'Биотехнолог (upstream/downstream)', level:'Высокий', overpay:true, why:'Бум биотеха и GLP-1; профильный опыт редкий.' },
+  { role:'Регуляторщик (RA) с опытом ЕАЭС', level:'Средний', overpay:true, why:'Переход на правила ЕАЭС увеличил спрос на опытных RA.' },
+  { role:'Менеджер клинических исследований (CRA)', level:'Средний', overpay:false, why:'Часть CRA ушла с международными CRO; опытных мало.' },
+  { role:'Учёный R&D (биология/химия)', level:'Средний', overpay:false, why:'Конкуренция за таланты между биотех-компаниями.' },
+  { role:'Специалист по фармаконадзору', level:'Средний', overpay:false, why:'Обязателен для каждого производителя, профильных немного.' },
+  { role:'Медицинский советник (MSL)', level:'Средний', overpay:false, why:'Нужен медицинский бэкграунд + коммуникации.' },
+  { role:'Оператор производства', level:'Низкий', overpay:false, why:'Массовая роль, но высокая текучесть — нанимают постоянно.' },
+];
+const TRENDS = [
+  { t:'Импортозамещение и локализация', d:'Господдержка, офсетные контракты, требования к доле отечественного в госзакупках. Запускаются новые линии и заводы.', h:'↑ спрос: производство, QA/QC, регистрация, валидация.' },
+  { t:'Уход и локализация иностранных компаний', d:'После 2022 г. многие глобальные игроки сократили инвестиции и штат в РФ; часть портфеля локализуется через партнёров.', h:'↓ вакансий в зарубежных; на рынок вышли опытные кандидаты — их разбирают локальные компании.' },
+  { t:'Бум GLP-1 (ожирение и диабет)', d:'Российские аналоги семаглутида и тирзепатида (ПромоМед, Герофарм) — один из самых горячих сегментов.', h:'↑ R&D, биотехнологи, производство, регистрация.' },
+  { t:'Биосимиляры и биотех полного цикла', d:'BIOCAD, Генериум, Промомед развивают сложные биопрепараты и моноклональные антитела.', h:'↑ учёные, биотехнологи, специалисты КИ и аналитики.' },
+  { t:'Госрегулирование и ЖНВЛП', d:'Доступ к госзакупкам и попадание в ЖНВЛП определяют экономику препарата.', h:'↑ ценность RA, market access, GR-специалистов.' },
+];
+const NEWS = [
+  { company:'Озон Фармацевтика', year:2024, type:'Финансы', t:'IPO на Московской бирже', h:'↑ рост и прозрачность — расширение найма' },
+  { company:'ПромоМед', year:2024, type:'Финансы', t:'IPO на Московской бирже', h:'↑ инвестиции в R&D и производство' },
+  { company:'ПромоМед', year:2024, type:'Продукт', t:'Российские аналоги семаглутида и тирзепатида (метаболика)', h:'↑ R&D, регистрация, производство' },
+  { company:'Биокад', year:2024, type:'Продукт', t:'Регистрация сенипрутуга — первый в мире препарат от болезни Бехтерева', h:'↑ R&D и клинические исследования' },
+  { company:'Фармстандарт', year:2024, type:'Производство', t:'Запуск производства фактора свёртывания крови VIII', h:'↑ биотех-производство, QC/QA' },
+  { company:'Отисифарм', year:2023, type:'Производство', t:'Запуск собственного завода в Калининграде', h:'↑ производство, контроль качества' },
+  { company:'Герофарм', year:2024, type:'Продукт', t:'Развитие инсулинов полного цикла и разработка семаглутида', h:'↑ биотехнологи, R&D' },
+  { company:'Активный Компонент', year:2024, type:'Производство', t:'Расширение выпуска фармсубстанций (импортозамещение АФИ)', h:'↑ химики-синтетики, производство' },
+  { company:'Р-Фарм', year:2024, type:'Производство', t:'Статус системообразующего предприятия, развитие биотех-площадок', h:'↑ производство, R&D, КИ' },
+  { company:'Нижфарм (STADA)', year:2025, type:'Рынок', t:'Лидер розничного рейтинга РФ по итогам года', h:'стабильный найм' },
+  { company:'—', year:2022, type:'Рынок', t:'Сокращение инвестиций ряда иностранных компаний в РФ', h:'↓ найм в зарубежных; ↑ переток кадров в локальные' },
+];
+
+/* платформы/технологии — выводятся из портфеля компании (без выдумок) */
+function platformsFor(c){
+  const t=new Set();
+  const txt=((c.keyProducts||[]).join(' ')+' '+(c.therapeuticAreas||[]).join(' ')+' '+(c.note||'')+' '+(c.status||'')).toLowerCase();
+  if(/антител|моноклональ/.test(txt)) t.add('Моноклональные антитела');
+  if(/инсулин/.test(txt)) t.add('Инсулины');
+  if(/пептид/.test(txt)) t.add('Пептиды');
+  if((c.segments||[]).includes('Вакцины')||/вакцин/.test(txt)) t.add('Вакцины');
+  if(/фактор|плазм|крови/.test(txt)) t.add('Препараты крови');
+  if((c.segments||[]).includes('Биотех')) t.add('Биотехнология (клеточные культуры)');
+  if(/субстан|\bафи\b/.test(txt)||/активный компонент/.test(c.name.toLowerCase())) t.add('Синтез АФИ/субстанций');
+  if(/инфузи|раствор|ампул/.test(txt)) t.add('Стерильные/инфузионные формы');
+  if((c.segments||[]).some(s=>['Дженерики','Рецептурные','OTC'].includes(s))) t.add('Малые молекулы (хим. синтез)');
+  return [...t];
+}
+
+/* питч «как продать кандидату» — только из фактов в базе */
+function pitchFor(c){
+  const p=[]; const d=dj(c);
+  if(c.marketRank&&c.marketRank<=10) p.push(`Входит в топ-${c.marketRank} фармпроизводителей России (Forbes 2025)`);
+  if(c.hasRnD) p.push('Есть собственный R&D в России — реальные задачи разработки, а не только продажи');
+  if((c.segments||[]).includes('Биотех')) p.push('Биотехнологическое производство — современный и востребованный стек');
+  if(c.country==='Зарубеж') p.push('Международные стандарты и узнаваемый бренд в резюме');
+  if(c.country==='СП') p.push('Российская производственная база под крылом международной группы');
+  if(cities(c).length) p.push(`Собственное производство в РФ: ${cities(c).slice(0,3).join(', ')}`);
+  if(typeof c.employeesRussia==='number'&&c.employeesRussia>=1500) p.push(`Большая команда: ${fmtNum(c.employeesRussia)} сотрудников в РФ`);
+  if(c.revenue!=null&&c.revenue>=30) p.push(`Крупный масштаб: выручка в РФ ${c.revenue} млрд ₽`);
+  if(d&&d.pct!=null&&d.pct>=78) p.push(`Высокая оценка сотрудников: ${d.pct}% рекомендуют (Dream Job)`);
+  if(p.length<3){ if((c.therapeuticAreas||[]).length) p.push('Портфель в областях: '+c.therapeuticAreas.slice(0,3).join(', ')); p.push('Стабильный работодатель российского фармрынка'); }
+  return p.slice(0,5);
+}
+
+/* зелёные/красные флаги — из реальных показателей Dream Job */
+function flagsFor(c){
+  const d=dj(c); const green=[],red=[];
+  if(!d) return {green,red,has:false};
+  if(d.pct!=null&&d.pct>=80) green.push('Высокий % рекомендаций');
+  if(d.pct!=null&&d.pct<65) red.push('Низкий % рекомендаций');
+  if(d.s!=null&&d.s>=4.0) green.push('Хорошие оценки зарплаты'); if(d.s!=null&&d.s<3.4) red.push('Нарекания на зарплату');
+  if(d.m!=null&&d.m>=4.0) green.push('Сильное руководство'); if(d.m!=null&&d.m<3.4) red.push('Вопросы к руководству');
+  if(d.c!=null&&d.c>=3.8) green.push('Хорошие перспективы роста'); if(d.c!=null&&d.c<3.0) red.push('Слабый карьерный рост');
+  if(d.n!=null&&d.n<30) red.push('Мало отзывов — данные нерепрезентативны');
+  return {green,red,has:green.length>0||red.length>0};
+}
+const rng = a => a ? `${a[0]}–${a[1]} тыс` : '—';
+
 /* ============ tiny atoms ============ */
 function Tag({ children, tone='gray', onClick, title }) {
   const tones = { mint:'bg-mint/10 text-teal', sky:'bg-sky/10 text-sky', gray:'bg-slate-100 text-slate-600',
@@ -156,6 +255,18 @@ function Block({ title, children, className }) {
     <h4 className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">{title}</h4>
     {children}
   </section>;
+}
+function Bar({ label, value, max, suffix, onClick }) {
+  const w = max>0 ? Math.max(2, Math.round(value/max*100)) : 0;
+  return (
+    <button onClick={onClick} disabled={!onClick} className={`w-full text-left group ${onClick?'cursor-pointer':'cursor-default'}`}>
+      <div className="flex items-center justify-between text-xs mb-0.5">
+        <span className={`truncate pr-2 ${onClick?'group-hover:text-teal':''}`}>{label}</span>
+        <span className="font-semibold shrink-0">{typeof value==='number'?value.toLocaleString('ru-RU'):value}{suffix||''}</span>
+      </div>
+      <div className="h-2 rounded-full bg-slate-100 overflow-hidden"><div className="h-full bg-mint rounded-full" style={{width:w+'%'}} /></div>
+    </button>
+  );
 }
 function djVerdict(d){
   let v;
@@ -194,12 +305,12 @@ function parseHash() {
   const h = (location.hash||'#/').replace(/^#/,'');
   const parts = h.split('/').filter(Boolean);
   if (parts[0]==='company' && parts[1]!=null) return { view:'company', id:Number(parts[1]) };
-  const known = ['catalog','compare','glossary','biocad'];
+  const known = ['catalog','market','analytics','compare','glossary','biocad'];
   return { view: known.includes(parts[0])?parts[0]:'catalog', id:null };
 }
 
 /* ============ NAV ============ */
-const NAV = [['catalog','Каталог'],['compare','Сравнение'],['glossary','Словарь'],['biocad','О BIOCAD']];
+const NAV = [['catalog','Каталог'],['market','Рынок труда'],['analytics','Аналитика'],['compare','Сравнение'],['glossary','Словарь'],['biocad','О BIOCAD']];
 function Nav({ view, query, setQuery, navigate }) {
   const [open, setOpen] = useState(false);
   const active = view==='company' ? 'catalog' : view;
@@ -292,6 +403,8 @@ function CompanyDetail({ c, showHeader, navigate }) {
           <div className="flex flex-wrap gap-1.5 mb-2.5">{c.segments.map(s=><Tag key={s} tone="gray">{s}</Tag>)}</div>
           <div className="text-[11px] text-slate-400 mb-1">R&D в России</div>
           <div className="mb-2.5">{c.hasRnD ? <Tag tone="green">✓ Есть R&D в РФ</Tag> : <Tag tone="gray">Нет / не подтверждено</Tag>}</div>
+          <div className="text-[11px] text-slate-400 mb-1">Технологические платформы</div>
+          <div className="flex flex-wrap gap-1.5 mb-2.5">{platformsFor(c).length ? platformsFor(c).map(p=><Tag key={p} tone="sky">{p}</Tag>) : <span className="text-sm text-slate-400">н/д</span>}</div>
           {c.website && <a href={c.website} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-sm text-teal hover:underline break-all no-print">🔗 {c.website.replace(/^https?:\/\//,'').replace(/\/$/,'')} ↗</a>}
         </Block>
 
@@ -305,6 +418,18 @@ function CompanyDetail({ c, showHeader, navigate }) {
 
         <Block title="Отзывы сотрудников · Dream Job">
           <DreamJob c={c} compact />
+          {(()=>{ const f=flagsFor(c); return f.has ? (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {f.green.map(g=><span key={g} className="text-[11px] bg-emerald-50 text-emerald-700 rounded-full px-2 py-0.5">🟢 {g}</span>)}
+              {f.red.map(r=><span key={r} className="text-[11px] bg-rose-50 text-rose-600 rounded-full px-2 py-0.5">🔴 {r}</span>)}
+            </div>
+          ) : null; })()}
+        </Block>
+
+        <Block title="Как продать кандидату — питч для звонка" className="lg:col-span-2">
+          <ul className="grid sm:grid-cols-2 gap-x-5 gap-y-1.5">
+            {pitchFor(c).map((p,i)=><li key={i} className="flex gap-2 text-sm"><span className="text-mint font-bold shrink-0">✓</span><span>{p}</span></li>)}
+          </ul>
         </Block>
       </div>
 
@@ -395,6 +520,36 @@ function Catalog({ navigate, query, setQuery, filters, setFilters, layout, setLa
     const a = document.createElement('a'); a.href=url; a.download='pharma-companies.csv'; a.click(); URL.revokeObjectURL(url);
   };
 
+  const exportXLS = ()=>{
+    const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const cell = v => { const num = typeof v==='number' && isFinite(v); return `<Cell ss:StyleID="cell"><Data ss:Type="${num?'Number':'String'}">${esc(num?v:String(v))}</Data></Cell>`; };
+    const hcell = v => `<Cell ss:StyleID="hdr"><Data ss:Type="String">${esc(v)}</Data></Cell>`;
+    const sheet = (name, headers, rows, widths)=>{
+      const cols = (widths||headers.map(()=>120)).map(w=>`<Column ss:Width="${w}"/>`).join('');
+      const head = `<Row ss:Height="26">${headers.map(hcell).join('')}</Row>`;
+      const body = rows.map(r=>`<Row>${r.map(cell).join('')}</Row>`).join('');
+      return `<Worksheet ss:Name="${esc(name)}"><Table>${cols}${head}${body}</Table>`
+        +`<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><FrozenNoSplit/><SplitHorizontal>1</SplitHorizontal><TopRowBottomPane>1</TopRowBottomPane><ActivePane>2</ActivePane></WorksheetOptions></Worksheet>`;
+    };
+    const compHead=['Название','Полное название','Происхождение','Forbes','Вид препаратов','R&D в РФ','Платформы','Сотрудники РФ','Сотрудники глоб.','Города производства','Регионы','Выручка РФ, млрд ₽','Терапевт. области','Ключевые препараты','Сайт','DJ % реком.','DJ отзывов'];
+    const compRows=filtered.map(c=>{ const d=dj(c)||{}; return [c.name,c.fullName,c.country,c.marketRank||'',c.segments.join(', '),c.hasRnD?'Да':'Нет',platformsFor(c).join(', '),(typeof c.employeesRussia==='number'?c.employeesRussia:''),(typeof c.employeesGlobal==='number'?c.employeesGlobal:''),cities(c).join(', '),c.regions.join(', '),(c.revenue==null?'':c.revenue),c.therapeuticAreas.join(', '),c.keyProducts.join(', '),c.website||'',(d.pct==null?'':d.pct),(d.n==null?'':d.n)]; });
+    const compW=[160,250,95,55,160,60,190,95,95,190,190,115,210,270,210,75,75];
+    const salRows=SALARY.map(s=>[s.role,s.dir,rng(s.msk),rng(s.spb),rng(s.reg)]);
+    const scRows=SCARCITY.map(s=>[s.role,s.level,s.overpay?'Да':'Нет',s.why]);
+    const srcRows=[['Выручка, рейтинг','Forbes «20 лучших фармпроизводителей России», 2025'],['Доля отеч. лекарств','AlphaRM / RNC Pharma, 2025'],['Численность сотрудников','rusprofile / Wikipedia / корпоративные данные'],['Отзывы сотрудников','Dream Job (dreamjob.ru), июнь 2026'],['Заводы, города, препараты','публичные корпоративные и отраслевые источники'],['Зарплаты','ориентир по обзорам hh.ru и кадровых агентств, 2025–2026'],['Примечание','«н/д» = публично не раскрыто; данные требуют проверки']];
+    const xml = `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>`
+      +`<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">`
+      +`<Styles><Style ss:ID="hdr"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#0071E3" ss:Pattern="Solid"/><Alignment ss:Vertical="Center" ss:WrapText="1"/></Style>`
+      +`<Style ss:ID="cell"><Alignment ss:Vertical="Top" ss:WrapText="1"/></Style></Styles>`
+      +sheet('Компании',compHead,compRows,compW)
+      +sheet('Зарплаты (ориентир)',['Роль','Направление','Москва, тыс ₽','СПб, тыс ₽','Регионы, тыс ₽'],salRows,[240,210,120,120,120])
+      +sheet('Дефицитные роли',['Роль','Дефицит','Переплата оправдана','Почему'],scRows,[240,90,120,380])
+      +sheet('Источники',['Показатель','Источник'],srcRows,[230,540])
+      +`</Workbook>`;
+    const url=URL.createObjectURL(new Blob(['﻿'+xml],{type:'application/vnd.ms-excel'}));
+    const a=document.createElement('a'); a.href=url; a.download='ФармаНавигатор.xls'; a.click(); URL.revokeObjectURL(url);
+  };
+
   const toggle = (id)=> setExpandedId(expandedId===id?null:id);
 
   return (
@@ -421,9 +576,10 @@ function Catalog({ navigate, query, setQuery, filters, setFilters, layout, setLa
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
                 </button>
               </div>
-              <button onClick={exportCSV} className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium hover:border-mint flex items-center gap-1.5" title="Скачать CSV">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>CSV
+              <button onClick={exportXLS} className="px-3 py-2 rounded-lg bg-mint text-white text-sm font-medium hover:opacity-90 flex items-center gap-1.5" title="Скачать Excel (компании, зарплаты, дефицит, источники)">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>Excel
               </button>
+              <button onClick={exportCSV} className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm font-medium hover:border-mint" title="Скачать CSV">CSV</button>
               <select value={sort} onChange={e=>set('sort',e.target.value)} className="px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
                 <option value="revenue">По выручке</option><option value="rank">По Forbes</option><option value="employees">По сотрудникам</option><option value="factories">По числу городов</option><option value="name">По названию</option>
               </select>
@@ -728,6 +884,140 @@ function Glossary() {
   );
 }
 
+/* ============ РЫНОК ТРУДА (зарплаты + дефицит) ============ */
+function SalaryPage({ navigate }) {
+  const [dir,setDir] = useState('all');
+  const dirs = uniq(SALARY.map(s=>s.dir));
+  const rows = SALARY.filter(s=>dir==='all'||s.dir===dir);
+  const lvlTone = { 'Высокий':'rose','Средний':'amber','Низкий':'green' };
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-6 fade-in">
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">Рынок труда: зарплаты и дефицит</h1>
+      <p className="text-slate2 text-sm mt-1.5 max-w-2xl">Ориентир по зарплатам (₽/мес, брутто) по ролям и регионам и карта «кадрового голода» — где сложно закрыть и где переплата за кандидата оправдана.</p>
+
+      <div className="flex flex-wrap gap-2 mt-5">
+        <button onClick={()=>setDir('all')} className={`px-3 py-1.5 rounded-full text-sm border transition ${dir==='all'?'bg-ink text-white border-ink':'bg-white border-slate-200 hover:border-mint'}`}>Все направления</button>
+        {dirs.map(d=><button key={d} onClick={()=>setDir(d)} className={`px-3 py-1.5 rounded-full text-sm border transition ${dir===d?'bg-ink text-white border-ink':'bg-white border-slate-200 hover:border-mint'}`}>{d}</button>)}
+      </div>
+
+      <div className="mt-4 bg-white surf rounded-2xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
+          <thead><tr className="border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400">
+            <th className="text-left p-3.5">Роль</th><th className="text-left p-3.5">Направление</th>
+            <th className="text-right p-3.5">Москва</th><th className="text-right p-3.5">Санкт-Петербург</th><th className="text-right p-3.5">Регионы</th>
+          </tr></thead>
+          <tbody>
+            {rows.map((s,i)=>(
+              <tr key={i} className={i%2?'bg-slate-50/40':''}>
+                <td className="p-3.5 font-medium">{s.role}</td>
+                <td className="p-3.5 text-slate2">{s.dir}</td>
+                <td className="p-3.5 text-right whitespace-nowrap font-semibold">{rng(s.msk)} ₽</td>
+                <td className="p-3.5 text-right whitespace-nowrap">{rng(s.spb)} ₽</td>
+                <td className="p-3.5 text-right whitespace-nowrap">{rng(s.reg)} ₽</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-[11px] text-slate-400 mt-2">Диапазоны ориентировочные (медиана рынка, брутто), по публичным обзорам hh.ru и кадровых агентств 2025–2026. Реальная вилка зависит от грейда, бонусов и компании.</p>
+
+      <h2 className="text-xl font-display font-extrabold mt-9">Карта дефицитных ролей</h2>
+      <p className="text-slate2 text-sm mt-1">Где на рынке «голод» — закрывается долго, кандидаты в цене.</p>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+        {SCARCITY.map((s,i)=>(
+          <div key={i} className="bg-white surf rounded-2xl p-4">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-display font-bold text-sm">{s.role}</span>
+              <Tag tone={lvlTone[s.level]}>{s.level} дефицит</Tag>
+            </div>
+            <p className="text-sm text-slate2 mt-2">{s.why}</p>
+            {s.overpay && <div className="mt-2 text-xs font-medium text-teal">💰 переплата за кандидата оправдана</div>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ============ АНАЛИТИКА РЫНКА (дашборд + тренды + сигналы) ============ */
+function MarketPage({ navigate }) {
+  const total=DATA.length;
+  const ru=DATA.filter(c=>c.country==='РФ').length, foreign=DATA.filter(c=>c.country==='Зарубеж').length, sp=DATA.filter(c=>c.country==='СП').length;
+  const withProd=DATA.filter(c=>c.hasProductionInRussia).length;
+  const factories=DATA.flatMap(c=>c.factories).length;
+  const topRev=DATA.filter(c=>c.revenue!=null).sort((a,b)=>b.revenue-a.revenue).slice(0,10);
+  const maxRev=topRev[0]?topRev[0].revenue:1;
+  const segCounts=useMemo(()=>{const m={};DATA.forEach(c=>c.segments.forEach(s=>m[s]=(m[s]||0)+1));return Object.entries(m).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);},[]);
+  const maxSeg=segCounts[0]?segCounts[0].value:1;
+  const regionCounts=useMemo(()=>{const m={};DATA.forEach(c=>c.regions.forEach(r=>m[r]=(m[r]||0)+1));return Object.entries(m).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value).slice(0,8);},[]);
+  const maxReg=regionCounts[0]?regionCounts[0].value:1;
+  const newsTone={Финансы:'sky',Продукт:'mint',Производство:'amber',Рынок:'gray'};
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-6 fade-in">
+      <h1 className="text-2xl md:text-3xl font-display font-extrabold">Аналитика рынка</h1>
+      <p className="text-slate2 text-sm mt-1.5 max-w-2xl">Контекст отрасли, которым удобно «продавать» компанию кандидату: масштаб, локализация, сегменты, тренды и кадровые сигналы.</p>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-5">
+        <StatCell value="≈1,89 трлн ₽" label="Розничный фармрынок РФ · 2025" />
+        <StatCell value="47,3%" label="Доля отеч. лекарств (в ₽) · 2025" />
+        <StatCell value={`${withProd} из ${total}`} label="С производством в РФ" />
+        <StatCell value={factories} label="Производственных площадок" />
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-3 mt-3">
+        <Block title="Топ-10 по выручке в РФ (млрд ₽)">
+          <div className="space-y-2.5">{topRev.map(c=><Bar key={c.id} label={c.name} value={c.revenue} max={maxRev} onClick={()=>navigate('company',c.id)} />)}</div>
+        </Block>
+        <Block title="Происхождение компаний">
+          <div className="space-y-2.5">
+            <Bar label="Российские" value={ru} max={total} />
+            <Bar label="Зарубежные" value={foreign} max={total} />
+            <Bar label="Совместные (СП)" value={sp} max={total} />
+          </div>
+          <p className="text-xs text-slate2 mt-3">Локализация — ключевой тренд: {withProd} из {total} компаний имеют производство в РФ.</p>
+        </Block>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-3 mt-3">
+        <Block title="Сегменты рынка (число компаний)">
+          <div className="space-y-2.5">{segCounts.map(s=><Bar key={s.name} label={s.name} value={s.value} max={maxSeg} />)}</div>
+        </Block>
+        <Block title="Топ регионов по числу компаний">
+          <div className="space-y-2.5">{regionCounts.map(r=><Bar key={r.name} label={r.name} value={r.value} max={maxReg} />)}</div>
+        </Block>
+      </div>
+
+      <Block title="Тренды отрасли — «крючки» для кандидата" className="mt-3">
+        <div className="grid sm:grid-cols-2 gap-3">
+          {TRENDS.map((t,i)=>(
+            <div key={i} className="border border-slate-100 rounded-xl p-3.5">
+              <div className="font-display font-bold text-sm">{t.t}</div>
+              <p className="text-sm text-slate2 mt-1">{t.d}</p>
+              <p className="text-xs text-teal font-medium mt-1.5">{t.h}</p>
+            </div>
+          ))}
+        </div>
+      </Block>
+
+      <Block title="Кадровые сигналы — события, влияющие на найм" className="mt-3">
+        <div className="space-y-2.5">
+          {NEWS.map((n,i)=>(
+            <div key={i} className="flex items-start gap-3 border-b border-slate-100 last:border-0 pb-2.5 last:pb-0">
+              <span className="text-xs font-semibold text-slate-400 w-10 shrink-0 mt-0.5">{n.year}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm"><span className="font-semibold">{n.company!=='—'?n.company+': ':''}</span>{n.t}</div>
+                <div className="text-xs text-teal mt-0.5">{n.h}</div>
+              </div>
+              <Tag tone={newsTone[n.type]||'gray'}>{n.type}</Tag>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-slate-400 mt-3">Источники: пресс-релизы компаний и отраслевые СМИ; влияние на найм — интерпретация, требует проверки.</p>
+      </Block>
+    </div>
+  );
+}
+
 /* ============ ROOT ============ */
 function App() {
   const [route, setRoute] = useState(parseHash());
@@ -756,6 +1046,8 @@ function App() {
       <Nav view={view} query={query} setQuery={setQuery} navigate={navigate} />
       <main className="flex-1">
         {view==='catalog' && <Catalog navigate={navigate} query={query} setQuery={setQuery} filters={filters} setFilters={setFilters} layout={layout} setLayout={setLayout} expandedId={expandedId} setExpandedId={setExpandedId} />}
+        {view==='market' && <SalaryPage navigate={navigate} />}
+        {view==='analytics' && <MarketPage navigate={navigate} />}
         {view==='compare' && <Compare navigate={navigate} selId={compareSel} setSelId={setCompareSel} />}
         {view==='glossary' && <Glossary />}
         {view==='biocad' && <BiocadPage navigate={navigate} />}
