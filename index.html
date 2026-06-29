@@ -25,18 +25,18 @@
   tailwind.config = {
     theme: { extend: {
       fontFamily: { display:['Manrope','system-ui','sans-serif'], body:['Inter','system-ui','sans-serif'] },
-      colors: { ink:'#15181d', slate2:'#64748b', mint:'#e2001a', teal:'#c0001a', sky:'#1d6fdb', paper:'#fafafa' },
+      colors: { ink:'#13233b', slate2:'#64748b', mint:'#2f80ed', teal:'#1c6dd0', sky:'#0ea5e9', paper:'#f4f8fd' },
     }},
   };
 </script>
 
 <style>
   html{scroll-behavior:smooth}
-  body{font-family:'Inter',sans-serif;background:#fafafa;color:#15181d}
+  body{font-family:'Inter',sans-serif;background:#f4f8fd;color:#13233b}
   h1,h2,h3,h4{font-family:'Manrope',sans-serif;letter-spacing:-.02em}
   ::-webkit-scrollbar{width:10px;height:10px}
-  ::-webkit-scrollbar-thumb{background:#dcdcdc;border-radius:6px;border:3px solid #fafafa}
-  ::-webkit-scrollbar-thumb:hover{background:#c4c4c4}
+  ::-webkit-scrollbar-thumb{background:#cdddf2;border-radius:6px;border:3px solid #f4f8fd}
+  ::-webkit-scrollbar-thumb:hover{background:#b3cdee}
   .fade-in{animation:fade .3s ease both}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .expand{animation:exp .25s ease both}
@@ -44,14 +44,14 @@
   @media (prefers-reduced-motion: reduce){*{animation:none!important}html{scroll-behavior:auto}}
   details>summary{list-style:none;cursor:pointer}
   details>summary::-webkit-details-marker{display:none}
-  [tabindex]:focus-visible,a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #e2001a;outline-offset:2px;border-radius:8px}
+  [tabindex]:focus-visible,a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #2f80ed;outline-offset:2px;border-radius:8px}
   @media print{header,footer,.no-print{display:none!important}body{background:#fff}}
-  mark{background:#ffe0e3;color:inherit;padding:0 1px;border-radius:3px}
+  mark{background:#d8e8ff;color:inherit;padding:0 1px;border-radius:3px}
 </style>
 </head>
 <body>
 <div id="root">
-  <div style="max-width:640px;margin:90px auto;padding:0 24px;font-family:Manrope,system-ui;text-align:center;color:#15181d">
+  <div style="max-width:640px;margin:90px auto;padding:0 24px;font-family:Manrope,system-ui;text-align:center;color:#13233b">
     <div style="font-size:40px">💊</div>
     <h1 style="font-size:22px;font-weight:800;margin:10px 0 8px">ФармаНавигатор загружается…</h1>
     <p style="color:#64748b;font-size:14px;line-height:1.6">Если за 10–15 сек. ничего не появилось — обновите страницу (F5).</p>
@@ -156,6 +156,16 @@ function Block({ title, children, className }) {
     {children}
   </section>;
 }
+function djVerdict(d){
+  let v;
+  if (d.pct==null) return d.n!=null ? 'Кратко: отзывов мало для уверенного вывода.' : null;
+  if (d.pct>=80) v='сотрудники в основном довольны — высокий рейтинг работодателя';
+  else if (d.pct>=70) v='в целом положительные отзывы, но есть нюансы';
+  else if (d.pct>=60) v='отзывы неоднозначные — стоит изучить детали';
+  else v='преобладают сдержанные и критичные отзывы';
+  if (d.n!=null && d.n<30) v+=' (мало отзывов — выборка нерепрезентативна)';
+  return 'Кратко: '+v+'.';
+}
 function DreamJob({ c, compact }) {
   const d = dj(c);
   if (!d) return (
@@ -165,6 +175,7 @@ function DreamJob({ c, compact }) {
     </div>
   );
   const scores = [['Зарплата',d.s],['Руководство',d.m],['Карьера',d.c]].filter(x=>x[1]!=null);
+  const verdict = djVerdict(d);
   return (
     <div>
       <div className="flex items-end gap-4 flex-wrap">
@@ -182,7 +193,8 @@ function DreamJob({ c, compact }) {
           ))}
         </div>
       )}
-      <a href={d.url} target="_blank" rel="noopener" className="inline-block text-sm text-teal font-medium hover:underline mt-3 no-print">Все отзывы на Dream Job ↗</a>
+      {verdict && <p className="text-sm font-medium text-ink mt-3 bg-mint/5 border border-mint/15 rounded-lg px-3 py-2">{verdict}</p>}
+      <a href={d.url} target="_blank" rel="noopener" className="inline-block text-sm text-teal font-medium hover:underline mt-2 no-print">Все отзывы на Dream Job ↗</a>
     </div>
   );
 }
@@ -311,27 +323,6 @@ function CompanyDetail({ c, showHeader, navigate }) {
           </dl>
         </Block>
       </div>
-
-      {(c.factories||[]).length>0 && (
-        <details className="mt-3 bg-white border border-slate-200 rounded-xl p-4 group">
-          <summary className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">Производственные площадки ({c.factories.length})<span className="text-mint text-base group-open:rotate-45 transition">+</span></summary>
-          <div className="mt-3 grid sm:grid-cols-2 gap-2.5">
-            {c.factories.map((f,i)=>(
-              <div key={i} className="border border-slate-100 rounded-lg p-3">
-                <div className="text-sm font-semibold flex items-center justify-between gap-2"><span>📍 {f.city}</span><Tag tone={f.gmp==='Да'?'green':'gray'}>GMP: {f.gmp}</Tag></div>
-                <div className="text-xs text-slate2 mt-1">{f.products}</div>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-
-      {c.note && (
-        <details className="mt-3 bg-white border border-slate-200 rounded-xl p-4 group">
-          <summary className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">Ключевые события<span className="text-mint text-base group-open:rotate-45 transition">+</span></summary>
-          <p className="text-sm text-slate2 mt-2.5">{c.note}</p>
-        </details>
-      )}
 
       {navigate && c.id!==BASE.id && (
         <div className="mt-3 no-print">
