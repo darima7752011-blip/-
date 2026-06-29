@@ -49,7 +49,7 @@ window.PHARMA_COMPANIES = [
       { city: "Жигулёвск", lat: 53.4106, lng: 49.4969, products: "Дженерики, твёрдые лекарственные формы", gmp: "Да" },
       { city: "Тольятти (ОЭЗ)", lat: 53.5078, lng: 49.4204, products: "Современные ЛП, расширение мощностей", gmp: "Да" }
     ],
-    employeesRussia: "н/д",
+    employeesRussia: 2800,
     employeesGlobal: "н/д",
     revenue: 63.6,
     revenueYear: 2025,
@@ -76,7 +76,7 @@ window.PHARMA_COMPANIES = [
       { city: "Ставрополь", lat: 45.0445, lng: 41.9690, products: "Твёрдые и жидкие формы", gmp: "Да" },
       { city: "Курган", lat: 55.4500, lng: 65.3333, products: "Инфузионные растворы, ампулы", gmp: "Да" }
     ],
-    employeesRussia: "н/д",
+    employeesRussia: 4000,
     employeesGlobal: "н/д",
     revenue: 54.0,
     revenueYear: 2025,
@@ -232,8 +232,8 @@ window.PHARMA_COMPANIES = [
       { city: "Москва (Технополис)", lat: 55.7000, lng: 37.6800, products: "Вакцины («Спутник Технополис»)", gmp: "Да" },
       { city: "Кострома (Ортат)", lat: 57.7679, lng: 40.9269, products: "Твёрдые и стерильные формы", gmp: "Да" }
     ],
-    employeesRussia: "н/д",
-    employeesGlobal: "н/д",
+    employeesRussia: 3000,
+    employeesGlobal: 5000,
     revenue: 21.0,
     revenueYear: 2025,
     yearEnteredRussia: 2001,
@@ -282,7 +282,7 @@ window.PHARMA_COMPANIES = [
     factories: [
       { city: "Саранск (Биохимик)", lat: 54.1838, lng: 45.1749, products: "АФИ, антибиотики, биотех, готовые формы", gmp: "Да" }
     ],
-    employeesRussia: "н/д",
+    employeesRussia: 2150,
     employeesGlobal: "н/д",
     revenue: 21.4,
     revenueYear: 2024,
@@ -307,7 +307,7 @@ window.PHARMA_COMPANIES = [
       { city: "Оболенск (МО)", lat: 54.9333, lng: 37.3667, products: "Инсулины полного цикла", gmp: "Да" },
       { city: "Пушкин (СПб)", lat: 59.7142, lng: 30.4163, products: "Готовые формы, субстанции", gmp: "Да" }
     ],
-    employeesRussia: "н/д",
+    employeesRussia: 1600,
     employeesGlobal: "н/д",
     revenue: 35.2,
     revenueYear: 2025,
@@ -338,7 +338,7 @@ window.PHARMA_COMPANIES = [
     yearEnteredRussia: 1997,
     segments: ["Рецептурные", "OTC", "Оригинальные"],
     therapeuticAreas: ["Неврология", "Психиатрия", "Иммунология", "Гастроэнтерология"],
-    keyProducts: ["Феназепам", "Граммидин", "Ингавирин"],
+    keyProducts: ["Феназепам", "Граммидин", "Ингавирин", "Тримедат"],
     hasRnD: true,
     hr: { roles: ["Производство", "R&D", "Медпредставители"], careerSite: "https://valentapharm.com/", note: "" },
     website: "https://valentapharm.com/",
@@ -355,7 +355,7 @@ window.PHARMA_COMPANIES = [
     factories: [
       { city: "Санкт-Петербург (ОЭЗ Новоорловская)", lat: 60.0500, lng: 30.2500, products: "Твёрдые и мягкие формы, косметика", gmp: "Да" }
     ],
-    employeesRussia: "н/д",
+    employeesRussia: 2060,
     employeesGlobal: "н/д",
     revenue: 29.5,
     revenueYear: 2025,
@@ -532,7 +532,7 @@ window.PHARMA_COMPANIES = [
     yearEnteredRussia: 1991,
     segments: ["OTC"],
     therapeuticAreas: ["Витамины и БАД", "Фитотерапия", "Широкий профиль"],
-    keyProducts: ["Антистрессовые, витаминные и фитолинейки Эвалар"],
+    keyProducts: ["Турбослим", "Ци-Клим", "Глицин Форте Эвалар", "Витаминные и фитолинейки"],
     hasRnD: true,
     hr: { roles: ["Производство", "R&D", "Маркетинг", "Продажи"], careerSite: "https://evalar.ru/", note: "Крупнейший российский производитель БАД и натуральных OTC." },
     website: "https://evalar.ru/",
@@ -1305,7 +1305,7 @@ window.PHARMA_COMPANIES = [
     yearEnteredRussia: 1919,
     segments: ["Дженерики", "OTC", "Рецептурные"],
     therapeuticAreas: ["Дерматология", "Кардиология", "Широкий профиль"],
-    keyProducts: ["Портфель STADA в РФ"],
+    keyProducts: ["Хондроксид", "Аципол", "Тромбоцид", "Портфель STADA в РФ"],
     hasRnD: false,
     hr: { roles: ["Производство", "QC/QA", "Продажи"], careerSite: "https://nizhpharm.ru/", note: "В 2025 г. сместила Bayer с 1 места розничного рейтинга RNC Pharma." },
     website: "https://nizhpharm.ru/",
